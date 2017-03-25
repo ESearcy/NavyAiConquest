@@ -45,9 +45,10 @@ namespace SEMod
         private List<Vector3D> _coords = new List<Vector3D>();
         private int _currentCoord;
         private int _previousCoord = 7;
-        private int _orbitRange = 500;
+        private int _orbitRange = 5000;
         public const int ApproachSpeedMod = 6;
         public double MaxSpeed = 50;
+        private bool needsHydrogen = false;
 
         public NavigationControls(IMyEntity entity, VRage.Game.ModAPI.Interfaces.IMyControllableEntity cont)
         {
@@ -61,7 +62,7 @@ namespace SEMod
             ShipOrientation();
             RefreshGyros();
             RefreshThrusters();
-            Util.Log(_logPath, "Navigation Controls Online: "+IsOperational());
+            Logger.Debug("Navigation Controls Online: " +IsOperational());
 
         }
 
@@ -69,7 +70,8 @@ namespace SEMod
         {
             _thrusters = _thrusters.Where(x => x != null).ToList();
 
-            _thrusters = _thrusters.Where(x => x.IsFunctional).ToList();
+            _thrusters = _thrusters.Where(x => x.IsWorking).ToList();
+            
             return _thrusters.Count;
         }
 
@@ -77,7 +79,7 @@ namespace SEMod
         {
             _gyros = _gyros.Where(x => x != null).ToList();
 
-            _gyros = _gyros.Where(x => x.IsFunctional).ToList();
+            _gyros = _gyros.Where(x => x.IsWorking).ToList();
             return _gyros.Count;
         }
 
@@ -85,10 +87,17 @@ namespace SEMod
         {
             int numGyros = GetWorkingGyroCount();
             int numThrusters = GetWorkingThrusterCount();
+            int numThrustDirections = GetNumberOfValidThrusterDirections();
 
-            bool operational = (numGyros > 0 && numThrusters > 0);
-            Util.Log(_logPath, "Navigation is Operational: "+ operational+" gyros:thrusters => "+numGyros+":"+numThrusters);
-            return operational;
+            bool hasSufficientGyros = _gyros.Count > 0 && (_gyros.Count == _gyroYaw.Count) &&  (_gyros.Count == _gyroPitch.Count);
+
+            bool operational = (numGyros > 0 && numThrusters > 0) && numThrustDirections >= 2;
+            Logger.Debug("Navigation is Operational: " + operational+" gyros:thrusters => "+numGyros+":"+numThrusters);
+
+            var atleasthalfWorking = _thrusters.Count(x => ((MyThrust) x).IsPowered) >= numThrusters/2;
+
+
+            return operational && atleasthalfWorking && hasSufficientGyros;
         }
 
         public bool PlayerHasControl()
@@ -183,20 +192,17 @@ namespace SEMod
                         }
                         if (Math.Abs(_degreesToVectorYaw) > precision)
                         {
-                            gyro.SetValueFloat(_gyroYaw[i], (float)(_degreesToVectorYaw * _alignSpeedMod) * (_gyroYawReverse[i]));
-                            if (Math.Abs(_degreesToVectorPitch) > precision)
-                            {
-                                gyro.SetValueFloat(_gyroPitch[i], (float)(_degreesToVectorPitch * _alignSpeedMod) * (_gyroPitchReverse[i]));
-                            }
-                            else
-                            {
-                                gyro.SetValueFloat(_gyroPitch[i], 0);
-                            }
+                            if(_degreesToVectorYaw > 0)
+                                gyro.SetValueFloat(_gyroYaw[i], (float)(_degreesToVectorYaw * _alignSpeedMod) * (_gyroYawReverse[i]));
+                            if (_degreesToVectorYaw < 0)
+                                gyro.SetValueFloat(_gyroYaw[i], (float)(_degreesToVectorYaw * _alignSpeedMod) * (_gyroYawReverse[i]));
                         }
                         else
                         {
                             gyro.SetValueFloat(_gyroYaw[i], 0);
                         }
+
+
                         if (Math.Abs(_degreesToVectorPitch) > precision)
                         {
                             gyro.SetValueFloat(_gyroPitch[i], (float)(_degreesToVectorPitch * _alignSpeedMod) * (_gyroPitchReverse[i]));
@@ -208,8 +214,7 @@ namespace SEMod
                     }
                     catch (Exception e)
                     {
-                        //Util.Notify(e.ToString());
-                        //This is only to catch the occasional situation where the ship tried to align to something but has between the time the method started and now has lost a gyro or whatever
+                        Logger.LogException(e);
                     }
                 }
             }
@@ -352,8 +357,65 @@ namespace SEMod
             }
         }
 
+        private int GetNumberOfValidThrusterDirections()
+        {
+            int up = 0;
+            int down = 0;
+            int left = 0;
+            int right = 0;
+            int forward = 0;
+            int backward = 0;
+
+            for (int i = 0; i < _thrusters.Count(x=>x.IsWorking); i++)
+            {
+                if ((_thrusters[i]).IsFunctional)
+                {
+                    Base6Directions.Direction thrusterForward = _thrusters[i].Orientation.TransformDirectionInverse(_shipForward);
+
+                    if (thrusterForward == Base6Directions.Direction.Up)
+                    {
+                        up++;
+                    }
+                    else if (thrusterForward == Base6Directions.Direction.Down)
+                    {
+                        down++;
+                    }
+                    else if (thrusterForward == Base6Directions.Direction.Left)
+                    {
+                        left++;
+                    }
+                    else if (thrusterForward == Base6Directions.Direction.Right)
+                    {
+                        right++;
+                    }
+                    else if (thrusterForward == Base6Directions.Direction.Forward)
+                    {
+                        forward++;
+                    }
+                    else if (thrusterForward == Base6Directions.Direction.Backward)
+                    {
+                        backward++;
+                    }
+                }
+            }
+            int sum = (up > 0 ? 1 : 0)
+                + (down > 0 ? 1 : 0)
+                + (left > 0 ? 1 : 0)
+                + (right > 0 ? 1 : 0)
+                + (forward > 0 ? 1 : 0)
+                + (backward > 0 ? 1 : 0)
+                ;
+
+           // Util.NotifyHud(sum + " dirs ");// +up+"+ up "+down+ "+ down" + left+ "+ left" + right+ "+ right" + forward+""+backward+ "+ forward");
+            return sum;
+
+
+
+        }
+
         private void RefreshThrusters()
         {
+            
             _thrusters.Clear();
             _gridTerminalSystem.GetBlocksOfType<MyThrust>(_thrusters);
         }
@@ -372,71 +434,71 @@ namespace SEMod
             _remoteControl.MoveAndRotateStopped();
         }
 
-        public void WeightedThrustTwordsDirection(Vector3D thrustVector, bool secondTry = false, bool usingHalfPower = false)
-        {
+        //public void WeightedThrustTwordsDirection(Vector3D thrustVector, bool secondTry = false, bool usingHalfPower = false)
+        //{
 
-            RefreshThrusters();
-            int fullpower = usingHalfPower ? 75 : 150;
-            int lowpower = 50;
+        //    RefreshThrusters();
+        //    int fullpower = usingHalfPower ? 75 : 150;
+        //    int lowpower = 50;
 
 
-            //generalize the thruster direction to 1,0,-1
-            int xPos = thrustVector.X > 0 ? 1 : thrustVector.X < 0 ? -1 : 0;
-            int yPos = thrustVector.Y > 0 ? 1 : thrustVector.Y < 0 ? -1 : 0;
-            int zPos = thrustVector.Z > 0 ? 1 : thrustVector.Z < 0 ? -1 : 0;
-            var desiredVector = new Vector3D(xPos, yPos, zPos);
+        //    //generalize the thruster direction to 1,0,-1
+        //    int xPos = thrustVector.X > 0 ? 1 : thrustVector.X < 0 ? -1 : 0;
+        //    int yPos = thrustVector.Y > 0 ? 1 : thrustVector.Y < 0 ? -1 : 0;
+        //    int zPos = thrustVector.Z > 0 ? 1 : thrustVector.Z < 0 ? -1 : 0;
+        //    var desiredVector = new Vector3D(xPos, yPos, zPos);
 
-            int xv = _ship.Physics.LinearVelocity.X > 0 ? 1 : _ship.Physics.LinearVelocity.X < 0 ? -1 : 0;
-            int yv = _ship.Physics.LinearVelocity.Y > 0 ? 1 : _ship.Physics.LinearVelocity.Y < 0 ? -1 : 0;
-            int zv = _ship.Physics.LinearVelocity.Z > 0 ? 1 : _ship.Physics.LinearVelocity.Z < 0 ? -1 : 0;
+        //    int xv = _ship.Physics.LinearVelocity.X > 0 ? 1 : _ship.Physics.LinearVelocity.X < 0 ? -1 : 0;
+        //    int yv = _ship.Physics.LinearVelocity.Y > 0 ? 1 : _ship.Physics.LinearVelocity.Y < 0 ? -1 : 0;
+        //    int zv = _ship.Physics.LinearVelocity.Z > 0 ? 1 : _ship.Physics.LinearVelocity.Z < 0 ? -1 : 0;
 
-            //if vector does not match, get the non matching vectors so we can match some thrusters against the new vector ("counterDriftVector" that stops drift, but does not go against the desired thruster direction)
-            int xm = xPos == xv ? 0 : xv;
-            int ym = yPos == yv ? 0 : yv;
-            int zm = zPos == zv ? 0 : zv;
-            var counterDriftVector = new Vector3D(xm, ym, zm);
+        //    //if vector does not match, get the non matching vectors so we can match some thrusters against the new vector ("counterDriftVector" that stops drift, but does not go against the desired thruster direction)
+        //    int xm = xPos == xv ? 0 : xv;
+        //    int ym = yPos == yv ? 0 : yv;
+        //    int zm = zPos == zv ? 0 : zv;
+        //    var counterDriftVector = new Vector3D(xm, ym, zm);
 
-            bool successfullyMoved = false;
-            foreach (var thruster in _thrusters)
-            {
-                Vector3D fow = thruster.WorldMatrix.Forward;
-                int xt = fow.X > 0 ? 1 : fow.X < 0 ? -1 : 0;
-                int yt = fow.Y > 0 ? 1 : fow.Y < 0 ? -1 : 0;
-                int zt = fow.Z > 0 ? 1 : fow.Z < 0 ? -1 : 0;
-                var thrusterVector = new Vector3D(xt, yt, zt);
+        //    bool successfullyMoved = false;
+        //    foreach (var thruster in _thrusters)
+        //    {
+        //        Vector3D fow = thruster.WorldMatrix.Forward;
+        //        int xt = fow.X > 0 ? 1 : fow.X < 0 ? -1 : 0;
+        //        int yt = fow.Y > 0 ? 1 : fow.Y < 0 ? -1 : 0;
+        //        int zt = fow.Z > 0 ? 1 : fow.Z < 0 ? -1 : 0;
+        //        var thrusterVector = new Vector3D(xt, yt, zt);
 
-                bool notDrifting = counterDriftVector == Vector3D.Zero;
-                bool thrusterPointsDesiredDirection = thrusterVector.Equals(desiredVector);
-                bool thrusterCountersDrift = thrusterVector.Equals(counterDriftVector) && !notDrifting;
-                bool thrusterNeedsPower = thrusterCountersDrift || thrusterPointsDesiredDirection;
+        //        bool notDrifting = counterDriftVector == Vector3D.Zero;
+        //        bool thrusterPointsDesiredDirection = thrusterVector.Equals(desiredVector);
+        //        bool thrusterCountersDrift = thrusterVector.Equals(counterDriftVector) && !notDrifting;
+        //        bool thrusterNeedsPower = thrusterCountersDrift || thrusterPointsDesiredDirection;
 
-                double angle = AngleBetween(thrustVector, desiredVector, true);
-                Util.Log(_logPath, "Angle " + angle);
-                if (angle > 80)
-                {
-                    int power = thrusterPointsDesiredDirection ? fullpower : lowpower;
-                    if (notDrifting)
-                        power = fullpower;
+        //        double angle = AngleBetween(thrustVector, desiredVector, true);
+        //        //Logger.Debug("Angle " + angle);
+        //        if (angle > 80)
+        //        {
+        //            int power = thrusterPointsDesiredDirection ? fullpower : lowpower;
+        //            if (notDrifting)
+        //                power = fullpower;
 
-                    thruster.GetActionWithName("OnOff_On").Apply(thruster);
-                    thruster.SetValueFloat("Override", power);
-                    successfullyMoved = true;
-                }
-                //just attempt to move the ship
-                else if (secondTry && angle > 89)
-                {
-                    thruster.GetActionWithName("OnOff_On").Apply(thruster);
-                    thruster.SetValueFloat("Override", fullpower);
-                    successfullyMoved = true;
-                }
-                else
-                {
-                    thruster.SetValueFloat("Override", 0);
-                }
-            }
-            if (!successfullyMoved && !secondTry)
-                ThrustTwordsDirection(thrustVector, true, usingHalfPower);
-        }
+        //            thruster.GetActionWithName("OnOff_On").Apply(thruster);
+        //            thruster.SetValueFloat("Override", power);
+        //            successfullyMoved = true;
+        //        }
+        //        //just attempt to move the ship
+        //        else if (secondTry && angle > 89)
+        //        {
+        //            thruster.GetActionWithName("OnOff_On").Apply(thruster);
+        //            thruster.SetValueFloat("Override", fullpower);
+        //            successfullyMoved = true;
+        //        }
+        //        else
+        //        {
+        //            thruster.SetValueFloat("Override", 0);
+        //        }
+        //    }
+        //    if (!successfullyMoved && !secondTry)
+        //        ThrustTwordsDirection(thrustVector, true, usingHalfPower);
+        //}
 
         public bool ThrustTwordsDirection(Vector3D thrustVector, bool secondTry = false, bool usingHalfPower = false)
         {
@@ -483,7 +545,7 @@ namespace SEMod
                 bool thrusterNeedsPower = thrusterCountersDrift || thrusterPointsDesiredDirection;
                 
                 double angle = AngleBetween(thrusterVector, desiredVector, true);
-                Util.Log(_logPath, "Angle " + angle);
+                //Logger.Debug("Angle " + angle);
                 if (thrusterNeedsPower)
                 {
                     int power = thrusterPointsDesiredDirection ? fullpower : lowpower;
@@ -538,6 +600,7 @@ namespace SEMod
                 }
                 catch (Exception e)
                 {
+                    Logger.LogException(e);
                     //Util.Notify(e.ToString());
                     //This is only to catch the occasional situation where the ship tried to align to something but has between the time the method started and now has lost a gyro or whatever
                 }
@@ -561,6 +624,7 @@ namespace SEMod
                 }
                 catch (Exception e)
                 {
+                    Logger.LogException(e);
                     //Util.Notify(e.ToString());
                     //This is only to catch the occasional situation where the ship tried to align to something but has between the time the method started and now has lost a gyro or whatever
                 }
@@ -592,6 +656,32 @@ namespace SEMod
             return rtnval;
         }
 
+        public void OrbitAtRange(Vector3D target, int range)
+        {
+            if (_remoteControl != null)
+            {
+                ResetOrbitCoords(target, range);
+                var dir = _ship.GetPosition() - _coords[_currentCoord];
+                double distanceFromPlayer = (target - _ship.GetPosition()).Length();
+                var orbitPoint = _coords[_currentCoord];
+                //
+                // HighlightDestinationVector(orbitPoint);
+                // Util.Log(_logPath, "distance " + distanceFromPlayer);
+
+                if (_ship.Physics.LinearVelocity.Normalize() > MaxSpeed)
+                {
+                    SlowDown();
+                }
+                else
+                {
+
+                    ThrustTwordsDirection(dir);
+                }
+                AlignTo(orbitPoint);
+
+            }
+        }
+
         public void Orbit(Vector3D target)
         {
             if (_remoteControl != null)
@@ -602,8 +692,8 @@ namespace SEMod
                 MaxSpeed = 40;
                 var orbitPoint = _coords[_currentCoord];
                 //
-                HighlightDestinationVector(orbitPoint);
-                Util.Log(_logPath, "distance " + distanceFromPlayer);
+               // HighlightDestinationVector(orbitPoint);
+               // Util.Log(_logPath, "distance " + distanceFromPlayer);
 
                 if (_ship.Physics.LinearVelocity.Normalize() > MaxSpeed)
                 {
@@ -646,7 +736,7 @@ namespace SEMod
 
                 if (_ship.Physics.LinearVelocity.Normalize() > MaxSpeed)
                 {
-                    Util.Log(_logPath, "slowing ");
+                    Logger.Debug("slowing ");
                     SlowDown();
                 }
                 else

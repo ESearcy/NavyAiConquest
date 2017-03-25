@@ -2604,7 +2604,7 @@
               <ColorMaskHSV x="0" y="-0.96" z="-0.5" />
               <Owner>144115188075855877</Owner>
               <ShareMode>Faction</ShareMode>
-              <CustomName>#PirateDrone#</CustomName>
+              <CustomName>#NavyDrone#</CustomName>
               <ShowOnHUD>false</ShowOnHUD>
               <ShowInTerminal>true</ShowInTerminal>
               <ShowInToolbarConfig>true</ShowInToolbarConfig>

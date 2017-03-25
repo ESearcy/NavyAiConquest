@@ -16,50 +16,53 @@ namespace SEMod
     public class Driver : MySessionComponentBase
     {
 
+        static String _logPath = "Driver";
+        static int _ticks = 0;
+        static bool _initalized = false;
+        static int numNavyDrones = 2;
+        static int numAiDrones = 2;
+        static int numNavyships = 2;
+        static int numAiships = 2;
 
-        private static String _logPath = "Driver";
-        private int _ticks = 0;
-        private bool _initalized = false;
-        private DateTime _lastSaveTime;
-        Dictionary<long, List<Ship>> assets = new Dictionary<long, List<Ship>>();
-        NavyController navy = new NavyController();
+        static FleetController navy = new FleetController("NavyFleet", 1234, ShipTypes.NavyFighter, ShipTypes.NavyFrigate,  new Vector3D(500, 500, 500), numNavyDrones, numNavyships);
+        static FleetController drones = new FleetController("AIFleet", 4321, ShipTypes.AIDrone, ShipTypes.AILeadShip,  new Vector3D(-500, -500, -500), numAiDrones, numAiships);
 
         public override void UpdateBeforeSimulation()
         {
-            Util.debuggingOn = true;
             try
             {
-                if (_ticks % 10 == 0)
-                {
-                    Util.SaveLogs();
-                    _lastSaveTime = DateTime.Now;
-                }
 
-                if (_ticks%1 == 0)
-                {
+                bool shouldRun = (MyAPIGateway.Utilities != null) && (MyAPIGateway.Multiplayer != null) && (MyAPIGateway.Session != null)
+                            && ((MyAPIGateway.Utilities.IsDedicated) || (MyAPIGateway.Multiplayer.IsServer));
+                
+                //Logger.DebugEnabled = true;
+
+                if (!shouldRun)
+                    return;
+
+                //if (_ticks % 2 == 0)
+                //{
+                    Logger.Debug("Executing Drone Code");
                     if (_initalized)
                     {
-                        ClearHud();
-                        FindAllDrones();
-                        navy.Update();
-                    }
+                    //ClearHud();
+                    FindAllDrones();
+
+                    navy.Update();
+                    drones.Update();
+                }
                     else
                     {
                         Setup();
                     }
-                }
-
-
-
-                //TimeSpan span = DateTime.Now.Subtract(_lastSaveTime);
-
-                
+                    Logger.Debug("Finished Executing Drone Code");
+                //}
 
                 _ticks++;
             }
             catch (Exception e)
             {
-                Util.Log(_logPath, e.ToString());
+                Logger.LogException(e);
             }
         }
 
@@ -72,92 +75,136 @@ namespace SEMod
             }
         }
 
+        protected override void UnloadData()
+        {
+            Logger.Debug("Closing...");
+            Logger.Terminate();
+            base.UnloadData();
+        }
+
         public void FindAllDrones()
         {
+            Logger.Debug("-------------------scanning for drones----------------------");
             HashSet<IMyEntity> entities = new HashSet<IMyEntity>();
-            List<IMyPlayer> players = new List<IMyPlayer>();
+            //List<IMyPlayer> players = new List<IMyPlayer>();
 
             try
             {
-                MyAPIGateway.Entities.GetEntities(entities);
-                MyAPIGateway.Players.GetPlayers(players);
+                MyAPIGateway.Entities.GetEntities(entities, x => x is IMyCubeGrid && !navy.HasFighterEntity(x) && !drones.HasFighterEntity(x) && (x.Physics!=null && x.Physics.Mass > 100));
+                //MyAPIGateway.Players.GetPlayers(players);
             }
             catch (Exception e)
             {
-                Util.LogError(_logPath, e.ToString());
+                Logger.LogException(e);
                 return;
             }
             
 
             //filter out any grids that are already accounted for
-            foreach (IMyEntity entity in entities.Where(x => x is IMyCubeGrid))
+            foreach (IMyEntity entity in entities)
             {
-                if (assets.All(x => !x.Value.Any(y=>y._cubeGrid==entity)))
+                if (!entity.Transparent)
                 {
-                    if (!entity.Transparent)
-                    {
-                        Util.Log(_logPath,"sending grid to be analyzed");
-                        SetUpDrone(entity);
-                    }
+                    SetUpDrone(entity);
                 }
             }
         }
 
-        private void AddDiscoveredShip(Ship ship)
-        {
-
-            if (assets.Keys.Contains(ship.GetOwnerId()))
-            {
-                assets[ship.GetOwnerId()].Add(ship);
-                Util.Log(_logPath, "[AddSpacePirate] squad existed: drone added!");
-            }
-            else
-            {
-                assets.Add(ship.GetOwnerId(), new List<Ship>());
-                Util.Log(_logPath, "[AddSpacePirate] squad created: drone added!");
-            }
-        }
-
-
         private void SetUpDrone(IMyEntity entity)
         {
+            Logger.Debug("SetUpDrone");
             Sandbox.ModAPI.IMyGridTerminalSystem gridTerminal = MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid((IMyCubeGrid)entity);
             List<Sandbox.ModAPI.Ingame.IMyTerminalBlock> T = new List<Sandbox.ModAPI.Ingame.IMyTerminalBlock>();
             gridTerminal.GetBlocksOfType<IMyTerminalBlock>(T);
 
             var droneType = IsDrone(T);
-                try
+            Logger.Debug("Setting up " + droneType);
+            try
                 {
-                Util.Log(_logPath, "Found Drone of type: " + droneType);
+                Logger.Debug("Found Drone of type: " + droneType);
 
                 switch (droneType)
                     {
                         case ShipTypes.NavyFighter:
                         {
-                            Ship ship = new Ship((IMyCubeGrid)entity, NavyController.NavyPlayerId);
-                            Util.Log(_logPath, "[SetUpDrone] Found New Pirate Ship. id=" + ship.GetOwnerId());
+                            Ship ship = new Ship((IMyCubeGrid)entity, navy.PlayerId, navy.LogPath);
+                            Logger.Debug("[SetUpDrone] Found New Pirate Ship. id=" + ship.GetOwnerId());
+                            
                             navy.AddFighterToFleet(ship, droneType);
-                            AddDiscoveredShip(ship);
+                           // AddDiscoveredShip(ship);
                             break;
                         }
-                    }
+
+                    case ShipTypes.AIDrone:
+                        {
+                            Ship ship = new Ship((IMyCubeGrid)entity, drones.PlayerId, drones.LogPath);
+                            Logger.Debug("[SetUpDrone] Found New Pirate Ship. id=" + ship.GetOwnerId());
+                            drones.AddFighterToFleet(ship, droneType);
+                            //AddDiscoveredShip(ship);
+                            break;
+                        }
+                    case ShipTypes.NavyFrigate:
+                        {
+                            Ship ship = new Ship((IMyCubeGrid)entity, navy.PlayerId, navy.LogPath);
+                            Logger.Debug("[SetUpDrone] Found New Pirate Ship. id=" + ship.GetOwnerId());
+
+                            navy.AddShipToFleet(ship, droneType);
+                            // AddDiscoveredShip(ship);
+                            break;
+                        }
+
+                    case ShipTypes.AILeadShip:
+                        {
+                            Ship ship = new Ship((IMyCubeGrid)entity, drones.PlayerId, drones.LogPath);
+                            Logger.Debug("[SetUpDrone] Found New Pirate Ship. id=" + ship.GetOwnerId());
+                            drones.AddShipToFleet(ship, droneType);
+                            //AddDiscoveredShip(ship);
+                            break;
+                        }
+                }
                 }
                 catch (Exception e)
                 {
-                    Util.LogError(_logPath, e.ToString());
+                    Logger.LogException(e);
                 }
 
         }
 
-        private string Drone = "#PirateDrone#";
+        private string navydrone = "#NavyDrone#";
+        private string aidrone = "#AIDrone#";
+        private string navydronel = "#LargeNavyDrone#";
+        private string aidronel = "#LargeAIDrone#";
+
+
         private ShipTypes IsDrone(List<Sandbox.ModAPI.Ingame.IMyTerminalBlock> T)
         {
-            Util.Log(_logPath, "[MiningDrones.SetUpDrone] is a drone?");
-            if (T.Exists(x => ((x).CustomName.Contains(Drone) && x.IsWorking)))
+
+            if (T.Exists(x => ((x).CustomName.Contains(navydronel) && x.IsWorking)))
             {
-                Util.Log(_logPath, "[MiningDrones.SetUpDrone] is a drone!");
+                Logger.Debug(" is a navy drone!");
+
+
+                return ShipTypes.NavyFrigate;
+            }
+            if (T.Exists(x => ((x).CustomName.Contains(aidronel) && x.IsWorking)))
+            {
+                Logger.Debug(" is an ai drone!");
+
+
+                return ShipTypes.AILeadShip;
+            }
+
+            if (T.Exists(x => ((x).CustomName.Contains(navydrone) && x.IsWorking)))
+            {Logger.Debug(" is a navy drone!");
+
                 return ShipTypes.NavyFighter;
             }
+            if (T.Exists(x => ((x).CustomName.Contains(aidrone) && x.IsWorking)))
+            {Logger.Debug(" is an ai drone!");
+
+                return ShipTypes.AIDrone;
+            }
+            
 
             return ShipTypes.NotADrone;
 
@@ -167,10 +214,12 @@ namespace SEMod
         private void Setup()
         {
             _initalized = true;
-            Util.Log(_logPath,"Test startup");
-            //_lastSaveTime = DateTime.Now;
-            TestExecutor.SpawnShip(new Vector3D(0, 0, 0), NavyController.NavyPlayerId);
-            TestExecutor.SpawnShip(new Vector3D(20,20,20), NavyController.NavyPlayerId);
+            Logger.Init();
+            Logger.Debug("Test startup");
+            ////_lastSaveTime = DateTime.Now;
+            //TestExecutor.SpawnShip(ShipTypes.AIDrone, new Vector3D(0, 0, 0), drones.PlayerId);
+            //TestExecutor.SpawnShip(ShipTypes.NavyFighter, new Vector3D(100, 100, 100), navy.PlayerId);
+
         }
     }
 }

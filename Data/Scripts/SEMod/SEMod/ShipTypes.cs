@@ -10,7 +10,10 @@ namespace SEMod
     {
         NavyFighter = 0,
         NavyFrigate = 1,
-        NotADrone = 2
+        NotADrone = 2,
+        AIDrone = 3,
+        AIFrigate = 4,
+        AILeadShip = 5
     }
 
     enum DroneWeaponActions
@@ -25,7 +28,9 @@ namespace SEMod
         Stationary,
         Approaching,
         Orbiting,
-        Avoiding
+        Avoiding,
+        BreakAway,
+        AttackRun
     }
 
     enum OrbitTypes

@@ -26,16 +26,16 @@ namespace SEMod
             }
             catch (Exception e)
             {
-                Util.LogError(_logpath,e.ToString());
+                Logger.LogException(e);
             }
             //NavigateShipToOrigin(ship);
         }
 
-        public static void SpawnShip(Vector3D location, long ownerid)
+        public static void SpawnShip(ShipTypes type , Vector3D location, long ownerid)
         {
             var freeplace = MyAPIGateway.Entities.FindFreePlace(location, 20);
 
-            spawner.SpawnShip(ShipTypes.NavyFighter, (Vector3D) freeplace, ownerid);
+            spawner.SpawnShip(type, (Vector3D) freeplace, ownerid);
 
         }
 
@@ -53,26 +53,25 @@ namespace SEMod
             {
                 MyAPIGateway.Session.Factions.CreateFaction(founderId, factionTag, factionName, desc, "none");
             }
-                
-                Util.NotifyHud(MyAPIGateway.Session.Factions.FactionNameExists(factionName)+"");
+
+                Logger.Debug(MyAPIGateway.Session.Factions.FactionNameExists(factionName)+"");
             IMyFaction faction = MyAPIGateway.Session.Factions.TryGetFactionByName(factionName);
             MyAPIGateway.Session.Factions.ChangeAutoAccept(faction.FactionId, founderId, acceptmembers, acceptPeace);
             //MyAPIGateway.Session.Factions.CreateFaction();
         }
             catch (Exception e)
             {
-                Util.LogError(_logpath,e.ToString());
-                Util.NotifyHud(e.Message);
+                Logger.LogException(e);
             }
             return null;
         }
 
         public static void SetupFaction()
         {
-            Util.NotifyHud("Creating Factions: ");
-            //IMyFaction drones = CreateFaction(1, "DRO", "Drones", "Order mataining force", false, false);
-            IMyFaction navy = CreateFaction(NavyController.NavyPlayerId, "NVY", "Navy", "Peace maintaining force", false, true);
-            Util.NotifyHud("Done Creating Factions: ");
+            //Util.NotifyHud("Creating Factions: ");
+            ////IMyFaction drones = CreateFaction(1, "DRO", "Drones", "Order mataining force", false, false);
+            //IMyFaction navy = CreateFaction(FleetController.PlayerId, "NVY", "Navy", "Peace maintaining force", false, true);
+            //Util.NotifyHud("Done Creating Factions: ");
 
         }
     }

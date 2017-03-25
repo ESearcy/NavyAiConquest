@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 using Sandbox.Game.Entities;
@@ -10,6 +11,7 @@ using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
+using Sandbox.Game.Entities.Cube;
 
 namespace SEMod
 {
@@ -32,60 +34,27 @@ namespace SEMod
         private TimeSpan rescanDelayTimespan;
         private DroneWeaponActions _currentWeaponAction = DroneWeaponActions.Standby;
         private DroneNavigationActions _currentNavigationAction = DroneNavigationActions.Stationary;
-
-        //internal string _beaconName = "CombatDrone";
-
-        //private List<IMyTerminalBlock> beacons = new List<IMyTerminalBlock>();
-        //private List<IMyTerminalBlock> antennas = new List<IMyTerminalBlock>();
-
-        ////Weapon Controls
-        //internal bool _isFiringManually;
-        //internal List<IMyTerminalBlock> _allWeapons = new List<IMyTerminalBlock>();
-        //internal List<IMyTerminalBlock> _allReactors = new List<IMyTerminalBlock>();
-        //internal List<IMyTerminalBlock> _manualGuns = new List<IMyTerminalBlock>();
-        //internal List<IMyTerminalBlock> _manualRockets = new List<IMyTerminalBlock>();
-
-
-        //internal double _maxAttackRange = 1000;
-        //private long _bulletSpeed = 200; //m/s
-        //private long _defaultOrbitRange = 700; //m/s
-        //private long _maxFiringRange = 700;
-
-        //internal IMyEntity GetEntity()
-        //{
-        //    return _cubeGrid as IMyEntity;
-        //}
-
-        //private int _radiusOrbitmultiplier = 12;
-        //private int _saftyOrbitmultiplier = 8;
-
-        //internal DateTime _createdAt = DateTime.Now;
-        //internal int _minTargetSize = 10;
-
-
-        //int missileStaggeredFireIndex = 0;
-        //DateTime _lastRocketFired = DateTime.Now;
-        //#endregion
-
-        //private static int numDrones = 0;
-        //internal int myNumber;
-        //public Type Type = typeof(Ship);
+        private List<IMyCubeBlock> AllBlocks;
+        private String fleetname;
+        private bool needsOxygen = false;
+        private Ship commandShip = null;
+        public Vector3D defaultOrbitPoint = new Vector3D(0,0,0);
 
         public long GetOwnerId()
         {
             return _ownerId;
         }
 
-        public Ship(IMyCubeGrid ent, long id)
+        public Ship(IMyCubeGrid ent, long id, String fleetName)
         {
+            this.fleetname = fleetName;
             _cubeGrid = ent;
-            Util.NotifyHud("Creating Drone");
             GridTerminalSystem = MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(_cubeGrid);
 
             SetOwner(id);
             List<Sandbox.ModAPI.IMyTerminalBlock> remoteControls = new List<Sandbox.ModAPI.IMyTerminalBlock>();
             GridTerminalSystem.GetBlocksOfType<IMyRemoteControl>(remoteControls);
-
+            GridTerminalSystem.GetBlocksOfType<IMyCubeBlock>(AllBlocks);
             ShipControls = remoteControls.FirstOrDefault() != null ? remoteControls.First() as Sandbox.Game.Entities.IMyControllableEntity : null;
             _ownerId = id;
 
@@ -96,15 +65,10 @@ namespace SEMod
             LocateShipComponets();
             ResetHealthMax();
             SetupRescanDelay();
-            
-            //ConfigureAntennas();
-            //ReloadWeaponsAndReactors();
-            //Util.NotifyHud("Checkpoint:" + T.Count);
-
-            //_cubeGrid.OnBlockAdded += RecalcMaxHp;
-            //myNumber = numDrones;
-            //numDrones++;
+            FindAntennasAndBeacons();
+            ConfigureAntennas();
         }
+
 
         private int one = 1;
         private int rescanDelay = 10;
@@ -113,6 +77,11 @@ namespace SEMod
             DateTime start = new DateTime(one, one, one, one, one, one);
             DateTime end = new DateTime(one, one, one, one, one, one * rescanDelay);
             rescanDelayTimespan = (end - start);
+        }
+
+        public void SetCommandShip(Ship s)
+        {
+            commandShip = s;
         }
 
         List<IMyTerminalBlock> reactors = new List<IMyTerminalBlock>();
@@ -147,24 +116,20 @@ namespace SEMod
         {
             
             navigation = new NavigationControls(_cubeGrid, ShipControls);
-            weaponControls = new WeaponControls(_cubeGrid, _ownerId, GridTerminalSystem);
+            weaponControls = new WeaponControls(_cubeGrid, _ownerId, GridTerminalSystem, fleetname);
         }
 
         private void ConfigureAntennas()
         {
-            //var lstSlimBlock = new List<IMySlimBlock>();
-            //_cubeGrid.GetBlocks(lstSlimBlock, (x) => x.FatBlock is Sandbox.ModAPI.IMyRadioAntenna);
-            //foreach (var block in lstSlimBlock)
-            //{
-            //    Sandbox.ModAPI.IMyRadioAntenna antenna =
-            //        (Sandbox.ModAPI.IMyRadioAntenna)block.FatBlock;
-            //    if (antenna != null)
-            //    {
-            //        //antenna.GetActionWithName("SetCustomName").Apply(antenna, new ListReader<TerminalActionParameter>(new List<TerminalActionParameter>() { TerminalActionParameter.Get("Combat Drone " + _manualGats.Count) }));
-            //        antenna.SetValueFloat("Radius", 10000);//antenna.GetMaximum<float>("Radius"));
-            //        _blockOn.Apply(antenna);
-            //    }
-            //}
+
+            foreach (var block in antennas)
+            {
+                if (block != null)
+                {
+                    //antenna.GetActionWithName("SetCustomName").Apply(antenna, new ListReader<TerminalActionParameter>(new List<TerminalActionParameter>() { TerminalActionParameter.Get("Combat Drone " + _manualGats.Count) }));
+                    block.SetValueFloat("Radius", 2000);//antenna.GetMaximum<float>("Radius"));
+                }
+            }
 
             //lstSlimBlock = new List<IMySlimBlock>();
             //_cubeGrid.GetBlocks(lstSlimBlock, (x) => x.FatBlock is Sandbox.ModAPI.IMyBeacon);
@@ -182,125 +147,8 @@ namespace SEMod
         //this percent is based on IMyTerminalBlocks so it does not take into account the status of armor blocks
         //any blocks not functional decrease the overall %
         //having less blocks than when the drone was built will also result in less hp (parts destoried)
-        private void CalculateDamagePercent()
-        {
-            //Util.Log(_logPath, "Entering Method Calculate DamagePercent");
-            //try
-            //{
-            //    List<IMyTerminalBlock> allTerminalBlocks =
-            //        new List<IMyTerminalBlock>();
-
-            //    GridTerminalSystem.GetBlocksOfType<IMyCubeBlock>(allTerminalBlocks);
 
 
-            //    double runningPercent = 0;
-            //    foreach (var block in allTerminalBlocks)
-            //    {
-            //        runningPercent += block.IsWorking || block.IsFunctional ? 100d : 0d;
-            //    }
-            //    runningPercent = runningPercent / allTerminalBlocks.Count;
-
-            //    _healthPercent = ((int)((allTerminalBlocks.Count / HealthBlockBase) * (runningPercent)) + "%");//*(runningPercent);
-            //}
-            //catch (Exception e)
-            //{
-            //    Util.NotifyHud(e.ToString());
-            //    Util.LogError(_logPath, e.ToString());
-            //    //this is to catch the exception where the block blows up mid read bexcause its under attack or whatever
-            //}
-        }
-
-        private void RecalcMaxHp(IMySlimBlock obj)
-        {
-            //List<IMyTerminalBlock> allTerminalBlocks =
-            //        new List<IMyTerminalBlock>();
-
-            //GridTerminalSystem.GetBlocksOfType<IMyCubeBlock>(allTerminalBlocks);
-
-            //double count = 0;
-            //foreach (var block in allTerminalBlocks)
-            //{
-            //    count += block.IsWorking || block.IsFunctional ? 100d : 0d;
-            //}
-
-            //HealthBlockBase = allTerminalBlocks.Count;
-        }
-
-
-        //Turn weapons on and off SetWeaponPower(true) turns weapons online: vice versa
-        public void SetWeaponPower(bool isOn)
-        {
-            //foreach (var w in _allWeapons)
-            //{
-            //    if (isOn)
-            //        _blockOn.Apply(w);
-            //    else
-            //        _blockOff.Apply(w);
-            //}
-        }
-
-        private void FindWeapons()
-        {
-            //if (_cubeGrid == null)
-            //    return;
-
-            //_allWeapons.Clear();
-            //_allReactors.Clear();
-            //_manualGuns.Clear();
-            //_manualRockets.Clear();
-
-
-            //Sandbox.ModAPI.IMyGridTerminalSystem gridTerminal = MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(_cubeGrid);
-            //List<Sandbox.ModAPI.IMyTerminalBlock> T = new List<Sandbox.ModAPI.IMyTerminalBlock>();
-
-            //gridTerminal.GetBlocksOfType<IMySmallMissileLauncher>(T);
-            //T = new List<Sandbox.ModAPI.IMyTerminalBlock>();
-            //_manualRockets = T;
-            //gridTerminal.GetBlocksOfType<IMySmallGatlingGun>(T);
-            //T = new List<Sandbox.ModAPI.IMyTerminalBlock>();
-            //_manualGuns = T;
-            //gridTerminal.GetBlocksOfType<IMyReactor>(T);
-            //T = new List<Sandbox.ModAPI.IMyTerminalBlock>();
-            //_allReactors = T;
-            //gridTerminal.GetBlocksOfType<IMyUserControllableGun>(T);
-            //_allWeapons = T;
-
-        }
-        private void SetupActions()
-        {
-            
-            //if (_fireGun == null && _allWeapons.Count > 0 && _allWeapons[0] != null && !actionsConfigured)
-            //{
-            //    var actions = new List<ITerminalAction>();
-                
-            //    ((Sandbox.ModAPI.IMyUserControllableGun)_allWeapons[0]).GetActions(actions);
-            //    Util.Log(_logPath, "Number of actions " + actions.Count);
-            //    if (_fireRocket == null && actions.Count>0)
-            //    {
-            //        foreach (var act in actions)
-            //        {
-            //            Util.Log(_logPath, "[Drone.IsOperational] Action Name " + act.Name.Replace(" ", "_"));
-            //            switch (act.Name.ToString())
-            //            {
-            //                case "Shoot_once":
-            //                    _fireRocket = act;
-            //                    break;
-            //                case "Shoot_On":
-            //                    _fireGun = act;
-            //                    break;
-            //                case "Toggle_block_Off":
-            //                    _blockOff = act;
-            //                    break;
-            //                case "Toggle_block_On":
-            //                    _blockOn = act;
-            //                    break;
-            //            }
-            //        }
-            //        actionsConfigured = true;
-            //        Util.Log(_logPath, "[Drone.IsOperational] Has Missile attack -> " + (_fireRocket != null) + " Has Gun Attack " + (_fireRocket != null) + " off " + (_blockOff != null) + " on " + (_blockOn != null));
-            //    }
-            //}
-        }
         //All three must be true
         //_cubeGrid is not trash
         //_cubeGrid Controlls are functional
@@ -308,10 +156,25 @@ namespace SEMod
         //There have been a few added restrictions that must be true for a ship[ to be alive
         public bool IsOperational()
         {
-            bool shipAndControlAlive = _cubeGrid != null && //ship
-                ShipControls != null && (ShipControls as IMyTerminalBlock).IsFunctional; //shipcontrols
-            bool isAlive = navigation.IsOperational() && weaponControls.IsOperational() && shipAndControlAlive;
-            Util.Log(_logPath,"Is Alive: "+isAlive);
+            bool isAlive = false;
+            try
+            {
+                if (_cubeGrid == null)
+                    return false;
+
+                bool shipAndControlAlive = _cubeGrid != null && //ship
+                                           ShipControls != null && (ShipControls as IMyTerminalBlock).IsFunctional;
+                //shipcontrols
+                
+                var numberantennas = antennas.Count(x=>x.IsWorking) + beacons.Count(x => x.IsWorking);
+                isAlive = navigation.IsOperational() && weaponControls.IsOperational() && shipAndControlAlive && (numberantennas>0);
+                Logger.Debug("Is Alive: " + isAlive);
+            }
+            catch (Exception e)
+            {
+               isAlive = false;
+                Logger.LogException(e);
+            }
             return isAlive;
         }
 
@@ -336,8 +199,10 @@ namespace SEMod
                 act.Apply(beacon);
             }
 
+            _cubeGrid.SyncObject.SendCloseRequest();
             MyAPIGateway.Entities.RemoveEntity(_cubeGrid as IMyEntity);
-            _cubeGrid = null;
+
+            //_cubeGrid = null;
         }
 
         private void TurnOnShip()
@@ -376,44 +241,21 @@ namespace SEMod
         //usses ammo manager to Reload the inventories of the reactors and guns (does not use cargo blcks)
         public void ReloadWeaponsAndReactors()
         {
-            //FindWeapons();
-            //Util.Log(_logPath, "Number of weapons reloading");
-            //ItemManager im = new ItemManager();
-            //im.Reload(_allWeapons);
-            //im.ReloadReactors(_allReactors);
-        }
+            Logger.Debug("Number of weapons reloading");
+            ItemManager im = new ItemManager();
+            List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
+            List<IMyTerminalBlock> blocks2 = new List<IMyTerminalBlock>();
+            List<IMyTerminalBlock> reactors = new List<IMyTerminalBlock>();
+            List<IMyTerminalBlock> gastanks = new List<IMyTerminalBlock>();
+            GridTerminalSystem.GetBlocksOfType<IMyGasGenerator>(gastanks);
+            GridTerminalSystem.GetBlocksOfType<IMyUserControllableGun>(blocks);
+            GridTerminalSystem.GetBlocksOfType<IMySmallGatlingGun>(blocks2);
+            GridTerminalSystem.GetBlocksOfType<IMyReactor>(reactors);
 
-        //turn on all weapons
-        public void ManualFire(bool doFire)
-        {
-            //FindWeapons();
-            //SetWeaponPower(doFire);
-            //if (doFire)
-            //{
-            //    Util.Log(_logPath, _fireGun + "[Drone.ManualFire] Number of guns -> " + _manualGuns.Count);
-            //    Util.Log(_logPath, _fireGun + "[Drone.ManualFire] number of all weapons -> " + _allWeapons.Count);
-            //    foreach (var gun in _manualGuns)
-            //    {
-            //        _fireGun.Apply(gun);
-            //    }
-
-            //    if (Math.Abs((DateTime.Now - _lastRocketFired).TotalMilliseconds) > 500 && _fireRocket != null &&
-            //        _manualRockets.Count > 0)
-            //    {
-            //        var launcher = _manualRockets[missileStaggeredFireIndex];
-            //        _fireGun.Apply(launcher);
-            //        if (missileStaggeredFireIndex + 1 < _manualRockets.Count())
-            //        {
-            //            missileStaggeredFireIndex++;
-            //        }
-            //        else
-            //            missileStaggeredFireIndex = 0;
-            //        _lastRocketFired = DateTime.Now;
-            //    }
-            //}
-
-            //_isFiringManually = doFire;
-
+            im.ReloadHydrogenTanks(gastanks);
+            im.Reload(blocks);
+            im.Reload(blocks2);
+            im.ReloadReactors(reactors);
         }
 
         public void DisableThrusterGyroOverrides()
@@ -431,185 +273,41 @@ namespace SEMod
         private int numRescans = 0;
         public void ScanLocalArea()
         {
-            var ts = (DateTime.Now - lastScan);
-            if (ts.TotalSeconds < _rescanRate)
+            if (_cubeGrid == null || weaponControls==null)
                 return;
-
-            if (numRescans > 10)
+            try
             {
-                weaponControls.ClearTargets();
-                numRescans = 0;
+                if (numRescans > 10)
+                {
+                    weaponControls.ClearTargets();
+                    numRescans = 0;
+                }
+                numRescans++;
+
+                lastScan = DateTime.Now;
+                var bs = new BoundingSphereD(_cubeGrid.GetPosition(), DETECTIONRANGE);
+                var nearbyEntities = MyAPIGateway.Entities.GetEntitiesInSphere(ref bs);
+
+                //var closeAsteroids = asteroids.Where(z => (z.GetPosition() - drone.GetPosition()).Length() < MaxEngagementRange).ToList();
+
+                weaponControls.ClearNearbyObjects();
+                foreach (var closeItem in nearbyEntities)
+                {
+                    if (closeItem is IMyCubeGrid && !closeItem.Transparent && closeItem.Physics!=null && closeItem.Physics.Mass > 5000)
+                        weaponControls.AddNearbyFloatingItem(closeItem as IMyCubeGrid);
+                    if (closeItem is IMyVoxelBase)
+                        weaponControls.AddNearbyAsteroid((IMyVoxelBase)closeItem);
+                }
             }
-            numRescans++;
-
-            lastScan = DateTime.Now;
-            var bs = new BoundingSphereD(_cubeGrid.GetPosition(), DETECTIONRANGE);
-            var nearbyEntities = MyAPIGateway.Entities.GetEntitiesInSphere(ref bs);
-
-            //var closeAsteroids = asteroids.Where(z => (z.GetPosition() - drone.GetPosition()).Length() < MaxEngagementRange).ToList();
-
-            weaponControls.ClearNearbyObjects();
-            foreach (var closeItem in nearbyEntities)
+            catch (Exception e)
             {
-                if (closeItem is IMyCubeGrid && !closeItem.Transparent && closeItem.Physics.Mass > 5000)
-                    weaponControls.AddNearbyFloatingItem(closeItem as IMyCubeGrid);
-                //if (closeItem is IMyVoxelBase)
-                //    _aMananager.Scan((IMyVoxelBase)closeItem);
+                Logger.LogException(e);
             }
-        }
-
-        //Working - and damn good I might add
-        //returns status means -1 = not activated, 0 = notEngaged, 1 = InCombat
-        public int Guard(Vector3D position)
-        {
-            //if (_bulletSpeed < 400)
-            //    _bulletSpeed += 100;
-            //else
-            //    _bulletSpeed = 100;
-
-            //var targetVector = Vector3D.Zero;
-            //var target = Vector3D.Zero;
-
-
-            //ManualFire(false);
-            //float enemyShipRadius = _defaultOrbitRange;
-            //IMyCubeGrid enemyTarget = tc.FindEnemyTarget();
-            //var avoidanceVector = navigation.GetWeightedCollisionAvoidanceVectorForNearbyStructures();
-
-            //if (enemyTarget != null)
-            //{
-            //    target = enemyTarget.GetPosition();
-
-            //    var keyPoint = tc.GetTargetKeyAttackPoint(enemyTarget);
-            //    enemyShipRadius = tc.GetTargetSize(enemyTarget);
-            //    if (keyPoint != null)
-            //    {
-            //        target = keyPoint.GetPosition();
-            //        targetVector = enemyTarget.Physics.LinearVelocity;
-            //    }
-            //}
-            //else if (tc.GetEnemyPlayer() != null)
-            //{
-            //    target = tc.GetEnemyPlayer().GetPosition();
-            //}
-
-            //if (target != Vector3D.Zero)
-            //{
-
-            //    var distance = (position - _cubeGrid.GetPosition()).Length();
-            //    var distanceFromTarget = (target - _cubeGrid.GetPosition()).Length();
-
-            //    double distanceVect = (target - _cubeGrid.GetPosition()).Length() / _bulletSpeed;
-            //    Vector3D compAmount = targetVector - _cubeGrid.Physics.LinearVelocity;
-            //    Vector3D compVector = new Vector3D(compAmount.X * distanceVect, compAmount.Y * distanceVect, compAmount.Z * distanceVect);
-
-            //    if (distance > _maxAttackRange)
-            //    {
-            //        _currentNavigationAction = DroneNavigationActions.Approaching;
-            //        Approach(position);
-            //    }
-            //    else
-            //    {
-            //        _currentNavigationAction = DroneNavigationActions.Orbiting;
-
-
-            //        if (avoidanceVector != Vector3D.Zero)
-            //        {
-            //            if (_cubeGrid.Physics.LinearVelocity.Normalize() > _maxAvoidanceSpeed)
-            //            {
-            //                navigation.SlowDown();
-            //            }
-            //            else
-            //            {
-            //                navigation.WeightedThrustTwordsDirection(avoidanceVector);
-            //            }
-            //            _currentNavigationAction = DroneNavigationActions.Avoiding;
-            //        }
-            //        else
-            //            CombatOrbit(target, enemyShipRadius * _radiusOrbitmultiplier);
-            //        //KeepAtCombatRange(target, targetVector);
-            //        double alignment = AlignTo(target + compVector);
-
-
-            //        if (alignment < 1)
-            //        {
-            //            _currentWeaponAction = DroneWeaponActions.Attacking;
-            //            ManualFire(true);
-            //        }
-            //        else
-            //        {
-            //            _currentWeaponAction = DroneWeaponActions.LockedOn;
-            //            ManualFire(false);
-            //        }
-            //    }
-            //}
-            //else if (avoidanceVector != Vector3D.Zero)
-            //{
-            //    if (_cubeGrid.Physics.LinearVelocity.Normalize() > _maxAvoidanceSpeed)
-            //    {
-            //        navigation.SlowDown();
-            //    }
-            //    else
-            //    {
-            //        AlignTo(avoidanceVector);
-            //        navigation.WeightedThrustTwordsDirection(avoidanceVector);
-            //    }
-            //    _currentNavigationAction = DroneNavigationActions.Avoiding;
-            //    _currentWeaponAction = DroneWeaponActions.Standby;
-            //}
-            //else
-            //{
-            //    _currentWeaponAction = DroneWeaponActions.Standby;
-            //    _currentNavigationAction = DroneNavigationActions.Approaching;
-            //    Orbit(position);
-            //    //ManualFire(false);
-            //}
-
-            return 0;
-        }
-
-        //this sets the status of the ship in its beacon name or antenna name - this is user settable within in drone name
-        //if drone name includes :antenna then the drone will display information on the antenna rather than the beacon
-        public void NameBeacon()
-        {
-            //try
-            //{
-
-            //    if (broadcastingType == 1)
-            //    {
-            //        if (Util.debuggingOn)
-            //        {
-            //            FindBeacons();
-            //            if (beacons != null && beacons.Count > 0)
-            //            {
-            //                CalculateDamagePercent();
-            //                var beacon = beacons[0] as Sandbox.ModAPI.IMyBeacon;
-            //                beacon.SetCustomName(_beaconName +
-            //                                     " HP: " + _healthPercent +
-            //                                     " MS: " + (int)_cubeGrid.Physics.LinearVelocity.Normalize());
-            //            }
-            //        }
-            //        else
-            //        {
-            //            FindBeacons();
-            //            if (beacons != null && beacons.Count > 0)
-            //            {
-            //                CalculateDamagePercent();
-            //                var beacon = beacons[0] as Sandbox.ModAPI.IMyBeacon;
-            //                beacon.SetCustomName("HP: " + _healthPercent);
-            //            }
-            //        }
-            //    }
-            //    else
-            //        Broadcast();
-            //}
-            //catch
-            //{
-            //}
         }
 
         internal void ReportDiagnostics()
         {
+            Logger.Debug("Report Diagnostics.");
             FindAntennasAndBeacons();
             Broadcast();
             //    SetBroadcasting(true);
@@ -618,71 +316,72 @@ namespace SEMod
         private String _beaconName = "";
         public void Broadcast()
         {
-            
-            Util.Log(_logPath, _beaconName +
+
+            Logger.Debug(_beaconName +
                                               "\nHP: " + healthPercent +
-                                              "\nMS: " + (int)_cubeGrid.Physics.LinearVelocity.Normalize() +
-                                              "\nNA: " + _currentNavigationAction +
-                                              "\nWA: " + _currentWeaponAction +
-                                              "\nWC: " + weaponControls.GetWeaponsCount() +
-                                              "\nGC: " + navigation.GetWorkingGyroCount() +
-                                              "\nTC: " + navigation.GetWorkingThrusterCount());
+                                              " \nMS: " + (int)_cubeGrid.Physics.LinearVelocity.Normalize() +
+                                              " \nNA: " + _currentNavigationAction +
+                                              " \nWA: " + _currentWeaponAction +
+                                              " \nWC: " + weaponControls.GetWeaponsCount() +
+                                              " \nGC: " + navigation.GetWorkingGyroCount() +
+                                              " \nTC: " + navigation.GetWorkingThrusterCount());
             try
             {
-                if (Util.debuggingOn)
+                if (Logger.DebugEnabled)
                 {
-                    if (antennas != null && antennas.Count > 0)
+                    if (beacons != null && beacons.Count > 0)
                     {
-                        CalculateDamagePercent();
-                        var antenna = antennas[0] as Sandbox.ModAPI.IMyRadioAntenna;
-                        antenna.SetCustomName(_beaconName +
+                        var antenna = beacons[0] as Sandbox.ModAPI.IMyBeacon;
+                        if(antenna!=null)
+                            antenna.CustomName = (_beaconName +
                                               "\nHP: " + healthPercent +
                                               "\nMS: " + (int)_cubeGrid.Physics.LinearVelocity.Normalize() +
                                               "\nNA: " + _currentNavigationAction +
                                               "\nWA: " + _currentWeaponAction);
 
                     }
+                    else
+                    {
+                        if (antennas != null && antennas.Count > 0)
+                        {
+                            var antenna = antennas[0] as Sandbox.ModAPI.IMyRadioAntenna;
+                            if (antenna != null)
+                                antenna.CustomName = (_beaconName +
+                                                  "\nHP: " + healthPercent +
+                                                  "\nMS: " + (int)_cubeGrid.Physics.LinearVelocity.Normalize() +
+                                                  "\nNA: " + _currentNavigationAction +
+                                                  "\nWA: " + _currentWeaponAction);
+
+                        }
+                    }
                 }
                 else
                 {
-                    if (antennas != null && antennas.Count > 0)
+                    if (beacons != null && beacons.Count > 0)
                     {
-                        CalculateDamagePercent();
-                        var antenna = antennas[0] as Sandbox.ModAPI.IMyRadioAntenna;
-                        antenna.SetCustomName(_beaconName +
-                                              "\nHP: " + healthPercent +
-                                              "\nMS: " + (int)_cubeGrid.Physics.LinearVelocity.Normalize());
+                        var antenna = beacons[0] as Sandbox.ModAPI.IMyBeacon;
+                        if (antenna != null)
+                            antenna.CustomName = (_beaconName +
+                                                  "\nHP: " + healthPercent +
+                                                  "\nMS: " + (int) _cubeGrid.Physics.LinearVelocity.Normalize());
+                    }
+                    else
+                    {
+                        if (antennas != null && antennas.Count > 0)
+                        {
+                            var antenna = antennas[0] as Sandbox.ModAPI.IMyRadioAntenna;
+                            if (antenna != null)
+                                antenna.CustomName = (_beaconName +
+                                                  "\nHP: " + healthPercent +
+                                                  "\nMS: " + (int)_cubeGrid.Physics.LinearVelocity.Normalize());
+                        }
                     }
                 }
             }
             catch (Exception e)
             {
-                Util.LogError(_logPath, e.ToString());
+                Logger.LogException(e);
             }
-        }
-
-        internal void SetBroadcasting(bool broadcastingEnabled)
-        {
-            //FindBeacons();
-            //ITerminalAction power = broadcastingEnabled ? _blockOn : _blockOff;
-            //Util.Log(_logPath, "ShipAligned 1" + (power==null));
-            //foreach (var v in beacons)
-            //{
-            //    power.Apply(v);
-            //}
-            //FindAntennas();
-            //foreach (var v in antennas)
-            //{
-            //    power.Apply(v);
-            //}
-        }
-
-        public void FindBeacons()
-        {
-            Sandbox.ModAPI.IMyGridTerminalSystem gridTerminal = MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(_cubeGrid);
-            List<Sandbox.ModAPI.IMyTerminalBlock> T = new List<Sandbox.ModAPI.IMyTerminalBlock>();
-            gridTerminal.GetBlocksOfType<IMyBeacon>(T);
-            beacons = T;
         }
 
         List<IMyTerminalBlock> antennas = new List<IMyTerminalBlock>();
@@ -695,14 +394,28 @@ namespace SEMod
         }
 
         // for thoes pesky drones that just dont care about the safty of others
+        private bool activated = false;
         public void Detonate()
         {
             ShipControls.MoveAndRotateStopped();
             List<IMyTerminalBlock> warHeads = new List<IMyTerminalBlock>();
             GridTerminalSystem.GetBlocksOfType<Sandbox.ModAPI.IMyWarhead>(warHeads);
 
-            foreach (var warhead in warHeads)
-                warhead.GetActionWithName("StartCountdown").Apply(warhead);
+            foreach (var warhead  in warHeads)
+            {
+                warhead.SetValueFloat("DetonationTime", 1200);
+                if (activated)
+                {
+                    warhead.GetActionWithName("StopCountdown").Apply(warhead);
+                    activated = false;
+                }
+                else
+                {
+                    warhead.GetActionWithName("StartCountdown").Apply(warhead);
+                    activated = false;
+                }
+
+            }
         }
 
         public double AlignTo(Vector3D target)
@@ -755,11 +468,11 @@ namespace SEMod
             {
                 navigation.SlowDown();
             }
-            else if (distance > 700)
+            else if (distance > 500)
             {
                 navigation.ThrustTwordsDirection(_cubeGrid.GetPosition() - target);
             }
-            else if (distance < 500)
+            else if (distance < 300)
             {
                 navigation.ThrustTwordsDirection(target - _cubeGrid.GetPosition());
             }
@@ -774,6 +487,11 @@ namespace SEMod
             navigation.Orbit(lastTargetPosition);
         }
 
+        public void FighterOrbit(Vector3D lastTargetPosition)
+        {
+            navigation.OrbitAtRange(lastTargetPosition, avoidanceRange*2);
+        }
+
         public void AimFreeOrbit(Vector3D lastTargetPosition)
         {
             navigation.CombatOrbit(lastTargetPosition);
@@ -781,115 +499,281 @@ namespace SEMod
 
 
         private int breakawayDistance = 75;
-        Vector3D bounceVector = Vector3D.Zero;
         private bool attacking = false;
-        public bool Update()
-        {
+
+        public void Update()
+        {try
+                {
+            Logger.Debug("==== fighter Update:");
             UpdateHealthPercent();
             weaponControls.DisableWeapons();
 
-            bool isOperational = IsOperational();
+            var isOperational = IsOperational();
+            Logger.Debug("operational = "+isOperational);
             if (isOperational)
             {
-                ScanLocalArea();
-                // navigation.Orbit(MyAPIGateway.Session.Player.GetPosition());
-                CalculateAvoidanceVectors();
-                TargetDetails target = weaponControls.GetEnemyTarget();
-
-
-                bool targetLocked = target != null;
-                if (targetLocked)
-                {
-                    var targetblock = weaponControls.GetTargetKeyAttackPoint(target.Ship);
-                    var targetPoition = targetblock != null ? targetblock.GetPosition() : target.Ship.GetPosition();
+                Logger.Debug("operational");
+                var hasAvoidanceVectors = CalculateAvoidanceVectors();
+                //var AnyTargetsInfront = CheckForHeadonCollision();
+                avoidanceVector.Normalize();
+                
+                    var target = weaponControls.GetEnemyTarget();
                     
 
-                    var awayDir = (_cubeGrid.GetPosition() - target.Ship.GetPosition());
-                    var dirTotarget = (target.Ship.GetPosition() - _cubeGrid.GetPosition());
-                    var distance = dirTotarget.Length() - target.ShipSize;
-                    var avoidTargetVector = ((dirTotarget*avoidanceVector) + dirTotarget)*100;
-                    if (distance > breakawayDistance)
+                    var targetLocked = target != null;
+                    if (targetLocked)
                     {
-                        navigation.CombatApproach(targetPoition); //CombatOrbit(MyAPIGateway.Session.Player.GetPosition());
-                        var falloff = target.Ship.Physics.LinearVelocity - _cubeGrid.Physics.LinearVelocity;
-                        double alignment = AlignTo(targetPoition+ falloff);
-                        if (alignment < 1)
-                        {
-                            weaponControls.EnableWeapons();
-                            if (alignment <= .1)
-                                navigation.StopSpin();
-                        }
+                        Logger.Debug("Has Target " + target);
 
+                            IMyTerminalBlock targetblock = null;
+                            targetblock = weaponControls.GetTargetKeyAttackPoint(target.Ship);
 
-                        breakawayDistance = 75;
-                        bounceVector = Vector3D.Zero;
-                        attacking = true;
+                            Logger.Debug("Has TargetBlock " + targetblock);
+                            var targetPoition = targetblock != null
+                                ? targetblock.GetPosition()
+                                : target.Ship.GetPosition();
+                            Logger.Debug("Target Position " + targetPoition);
+
+                            var awayDir = _cubeGrid.GetPosition() - target.Ship.GetPosition();
+                            var dirTotarget = targetPoition - _cubeGrid.GetPosition();
+                            var distance = dirTotarget.Length() - target.ShipSize;
+                            dirTotarget.Normalize();
+                            var avoidTargetVector = avoidanceVector*100;//*dirTotarget;
+                            if (distance > breakawayDistance)
+                            {
+                                //Util.NotifyHud(hasAvoidanceVectors + " has vectors " + avoidanceVector);
+                                if (hasAvoidanceVectors) { 
+                                    navigation.ThrustTwordsDirection(avoidTargetVector);
+                                    AlignTo(_cubeGrid.GetPosition() - avoidTargetVector);
+                                    _currentNavigationAction = DroneNavigationActions.Avoiding;
+                                    if (_cubeGrid.Physics.LinearVelocity.Normalize() > 40)
+                                    {
+                                        navigation.SlowDown();
+                                    }
+                                
+                                }
+                                else
+                                {
+                                    //if(distance > breakawayDistance*3)
+                                        navigation.CombatApproach(targetPoition);
+                                 //KeepAtCombatRange(targetPoition, target.Ship.Physics.LinearVelocity);
+                                _currentWeaponAction = DroneWeaponActions.LockedOn;
+                                _currentNavigationAction = DroneNavigationActions.AttackRun;
+
+                                var falloff = target.Ship.Physics.LinearVelocity - _cubeGrid.Physics.LinearVelocity;
+                                    var alignment = AlignTo(targetPoition + falloff);
+                                    if (alignment <= 1)
+                                    {
+                                        if(distance < 900)
+                                            weaponControls.EnableWeapons();
+
+                                        if (alignment <= 1)
+                                            navigation.StopSpin();
+                                    }
+                                }
+                                breakawayDistance = 75;
+                                attacking = true;
+                            }
+                            else
+                            {
+                                _currentNavigationAction = DroneNavigationActions.BreakAway;
+                                navigation.ThrustTwordsDirection(avoidTargetVector);
+                                AlignTo(_cubeGrid.GetPosition() - avoidTargetVector);
+                                
+                                breakawayDistance = 600;
+                                attacking = false;
+                            }
+
                     }
                     else
                     {
-                        //dirTotarget.Normalize();
-                        //avoidanceVector.Normalize();
-                        
-                        //bounceVector = (avoidanceVector*2+ _cubeGrid.Physics.LinearVelocity) *100;
-                        //else if (bounceVector == Vector3D.Zero)
-                        //    bounceVector = _cubeGrid.Physics.LinearVelocity;
-                        
-                        
-                        avoidanceVector.Normalize();
-                        //ShowVectorOnHud(_cubeGrid.GetPosition(), avoidanceVector * 100);
-                        //ShowVectorOnHud(_cubeGrid.GetPosition(), avoidTargetVector);
-                        navigation.ThrustTwordsDirection(avoidTargetVector);
-                        AlignTo(_cubeGrid.GetPosition() - avoidTargetVector);
-                        //ShowLocationOnHud(_cubeGrid.GetPosition() + bounceVector);
-                        breakawayDistance = 150;
-                        attacking = false;
+                        _currentWeaponAction = DroneWeaponActions.Standby;
+                        if (!hasAvoidanceVectors)
+                        {
+                            Orbit(defaultOrbitPoint);
+                            _currentNavigationAction = DroneNavigationActions.Orbiting;
+                        }
+                        else
+                        {
+                            navigation.ThrustTwordsDirection(avoidanceVector);
+                            AlignTo(_cubeGrid.GetPosition() - avoidanceVector);
+                            _currentNavigationAction = DroneNavigationActions.Avoiding;
+                            breakawayDistance = 150;
+                            attacking = false;
+                        }
+
+                    }
+                Broadcast();
+            }
+            }
+            catch (Exception e)
+            {
+                Logger.LogException(e);
+            }
+
+        }
+
+        public void UpdateFighter()
+        {
+            try
+            {
+                bool followingCommandShip = commandShip.IsOperational();
+                if (commandShip != null)
+                {
+                    if (!followingCommandShip)
+                        commandShip = null;
+                    else
+                    {
+                        defaultOrbitPoint = commandShip.GetPosition();
                     }
                 }
-                else
+
+                Logger.Debug("==== fighter Update:");
+                UpdateHealthPercent();
+                weaponControls.DisableWeapons();
+
+                var isOperational = IsOperational();
+                Logger.Debug("operational = " + isOperational);
+                if (isOperational)
                 {
-                    var avoidTargetVector = (avoidanceVector);
-                    navigation.ThrustTwordsDirection(avoidTargetVector);
-                    AlignTo(_cubeGrid.GetPosition() - avoidTargetVector);
-                    //Orbit(new Vector3D(0,0,0));
+                    Logger.Debug("operational");
+                    var hasAvoidanceVectors = CalculateAvoidanceVectors();
+                    //var AnyTargetsInfront = CheckForHeadonCollision();
+                    avoidanceVector.Normalize();
+
+                    var target = weaponControls.GetEnemyTarget();
+                    
+                    var targetLocked = target != null;
+                    if (targetLocked)
+                    {
+                        Logger.Debug("Has Target " + target);
+
+                        IMyTerminalBlock targetblock = null;
+                        targetblock = weaponControls.GetTargetKeyAttackPoint(target.Ship);
+
+                        Logger.Debug("Has TargetBlock " + targetblock);
+                        var targetPoition = targetblock != null
+                            ? targetblock.GetPosition()
+                            : target.Ship.GetPosition();
+                        Logger.Debug("Target Position " + targetPoition);
+
+                        var awayDir = _cubeGrid.GetPosition() - target.Ship.GetPosition();
+                        var dirTotarget = targetPoition - _cubeGrid.GetPosition();
+                        var distance = dirTotarget.Length() - target.ShipSize;
+                        dirTotarget.Normalize();
+                        var avoidTargetVector = avoidanceVector * 100;//*dirTotarget;
+                        if (distance > breakawayDistance)
+                        {
+                            //Util.NotifyHud(hasAvoidanceVectors + " has vectors " + avoidanceVector);
+                            if (hasAvoidanceVectors)
+                            {
+                                navigation.ThrustTwordsDirection(avoidTargetVector);
+                                AlignTo(_cubeGrid.GetPosition() - avoidTargetVector);
+                                _currentNavigationAction = DroneNavigationActions.Avoiding;
+                                
+                            }
+                            else
+                            {
+                                //if(distance > breakawayDistance*3)
+                                navigation.CombatApproach(targetPoition);
+                                _currentWeaponAction = DroneWeaponActions.LockedOn;
+                                _currentNavigationAction = DroneNavigationActions.AttackRun;
+
+                                var falloff = target.Ship.Physics.LinearVelocity - _cubeGrid.Physics.LinearVelocity;
+                                var alignment = AlignTo(targetPoition + falloff);
+                                if (alignment <= 1)
+                                {
+                                    if (distance < 900)
+                                        weaponControls.EnableWeapons();
+
+                                    if (alignment <= 1)
+                                        navigation.StopSpin();
+                                }
+                            }
+                            breakawayDistance = 75;
+                            attacking = true;
+                        }
+                        else
+                        {
+                            _currentNavigationAction = DroneNavigationActions.BreakAway;
+                            navigation.ThrustTwordsDirection(avoidTargetVector);
+                            AlignTo(_cubeGrid.GetPosition() - avoidTargetVector);
+
+                            breakawayDistance = 600;
+                            attacking = false;
+                        }
+
+                    }
+                    else
+                    {
+                        _currentWeaponAction = DroneWeaponActions.Standby;
+                        if (!hasAvoidanceVectors)
+                        {
+                            FighterOrbit(defaultOrbitPoint);
+                            _currentNavigationAction = DroneNavigationActions.Orbiting;
+                        }
+                        else
+                        {
+                            navigation.ThrustTwordsDirection(avoidanceVector);
+                            AlignTo(_cubeGrid.GetPosition() - avoidanceVector);
+                            _currentNavigationAction = DroneNavigationActions.Avoiding;
+                            breakawayDistance = 150;
+                            attacking = false;
+                        }
+
+                    }
+                    Broadcast();
+                    if (_cubeGrid.Physics.LinearVelocity.Normalize() > 60)
+                    {
+                        navigation.SlowDown();
+                    }
                 }
-
-                //Util.NotifyHud("num targets: "+weaponControls.GetNumberTargets());
-                
-                ////if (avoidanceVector != Vector3D.Zero)
-                ////{
-                ////    Util.NotifyHud(avoidanceVector.Normalize()+"");
-                ////    navigation.ThrustTwordsDirection(avoidanceVector);
-                ////}
-                ////else if (targetLocked)
-                ////    navigation.(target.Ship.GetPosition(), 100);
-                ////else
-                
-
-
-
-                //weaponControls.DebugMarkTargetAndKeyPoint();
-                //IMyTerminalBlock closiestKeyBlock = weaponControls.GetTargetKeyAttackPoint(targetGrid);
-
-                //Vector3D keyPointPos = closiestKeyBlock.GetPosition();
-
-                //weaponControls.MarkAllTrackedObjects();
-                //Util.NotifyHud("alive: " + healthPercent);
             }
-            else
+            catch (Exception e)
             {
-                //Util.NotifyHud("dead: " + healthPercent);
+                Logger.LogException(e);
             }
-            
-            //check if alive - display
-            //Update nearby objects
+        }
 
-            //figure out current order
-            //Calculate avoidance if needed
-            //Calculate if in combat range of target
+        private void Follow(Vector3D vector3D)
+        {
+            var distance = (_cubeGrid.GetPosition() - vector3D).Length();
 
-            Broadcast();
+            var maxSpeed = distance > 1000 ? 150 : distance / 10 > 20 ? distance / 10 : 20;
+            AlignTo(vector3D);
 
-            return isOperational;
+            if (_cubeGrid.Physics.LinearVelocity.Normalize() > maxSpeed)
+            {
+                navigation.SlowDown();
+            }
+            else if (distance > 500)
+            {
+                navigation.ThrustTwordsDirection(_cubeGrid.GetPosition() - vector3D);
+            }
+        }
+
+
+        private bool CheckForHeadonCollision()
+        {
+            List<IMyCubeGrid> closiest = weaponControls.GetObjectsInRange(avoidanceRange);
+            List<IMyVoxelBase> asteroids = weaponControls.GetAsteroids(avoidanceRange * 4);
+
+            int count = 0;
+            avoidanceVector = Vector3D.Zero;
+
+            foreach (var asteroid in asteroids)
+            {
+                count++;
+                Vector3D vector = (_cubeGrid.GetPosition() - asteroid.GetPosition());
+                vector.Normalize();
+                //ShowVectorOnHud(target.Ship.GetPosition(), vector);
+                avoidanceVector = avoidanceVector + vector;
+            }
+            avoidanceVector = avoidanceVector / count;
+            //ShowVectorOnHud(_cubeGrid.GetPosition(), avoidanceVector);
+            ;
+
+            return !double.IsNaN(avoidanceVector.Normalize());
         }
 
         private void ShowLocationOnHud(Vector3D position)
@@ -901,34 +785,77 @@ namespace SEMod
             MyAPIGateway.Session.GPS.AddGps(id, mygps);
         }
 
-        private void ShowVectorOnHud(Vector3D position, Vector3D direction)
-        {
-            var color = Color.Red.ToVector4();
-            MySimpleObjectDraw.DrawLine(position, position + direction, "null or transparent material", ref color, .1f);
-        }
+        //private void ShowVectorOnHud(Vector3D position, Vector3D direction)
+        //{
+        //    var color = Color.Red.ToVector4();
+        //    MySimpleObjectDraw.DrawLine(position, position + direction, "null or transparent material", ref color, .1f);
+        //}
 
         private int collisionDistance = 200;
-        private int avoidanceRange = 300;
+        private int avoidanceRange = 200;
         private Vector3D avoidanceVector = Vector3D.Zero;
-        private void CalculateAvoidanceVectors()
+        private bool avoidedLastTurn = false;
+        private DateTime timeSinceLastAvoid = DateTime.Now;
+        public DateTime lastUpdate = DateTime.Now.AddMinutes(-5);
+        internal DateTime lastReload = DateTime.Now.AddMinutes(-5);
+
+        private bool CalculateAvoidanceVectors()
         {
-            List<TargetDetails> closiest = weaponControls.GetObjectsInRange(avoidanceRange);
+            if (avoidedLastTurn)
+            {
+                if ((DateTime.Now - timeSinceLastAvoid).TotalSeconds > 3)
+                {
+                    avoidedLastTurn = false;
+                }
+                else return true;
+            }
+            List<IMyCubeGrid> closiest = weaponControls.GetObjectsInRange(avoidanceRange);
             List<IMyVoxelBase> asteroids = weaponControls.GetAsteroids(avoidanceRange);
 
             int count = 0;
-            avoidanceVector = Vector3D.Zero;
+            var avoidanceVectorToBe = Vector3D.Zero;
             foreach (var target in closiest)
             {
-                count ++;
-                Vector3D vector = (_cubeGrid.GetPosition() - target.Ship.GetPosition());
+                count++;
+                Vector3D vector = (target.GetPosition() - _cubeGrid.GetPosition());
+                var length = avoidanceRange - vector.Length();
+                vector.Normalize();
                 //ShowVectorOnHud(target.Ship.GetPosition(), vector);
-                avoidanceVector = avoidanceVector + vector;
+                avoidanceVectorToBe = avoidanceVectorToBe + (vector*length);
             }
-            avoidanceVector = avoidanceVector/count;
+
+            foreach (var asteroid in asteroids)
+            {
+                count++;
+                Vector3D vector = (asteroid.GetPosition() - _cubeGrid.GetPosition());
+                var length = avoidanceRange - vector.Length();
+                vector.Normalize();
+                //ShowVectorOnHud(target.Ship.GetPosition(), vector);
+                avoidanceVectorToBe = avoidanceVectorToBe + (vector * length);
+            }
+            avoidanceVector = avoidanceVectorToBe / count;
             //ShowVectorOnHud(_cubeGrid.GetPosition(), avoidanceVector);
-            double maxvalue = avoidanceVector.X > avoidanceVector.Y ? avoidanceVector.X > avoidanceVector.Z ? avoidanceVector.X : avoidanceVector.Z : avoidanceVector.Y > avoidanceVector.Z ? avoidanceVector.Y : avoidanceVector.Z;
-            var stepDirection = avoidanceVector / Math.Abs(maxvalue);
-            avoidanceVector = stepDirection;
+
+            avoidedLastTurn = !double.IsNaN(avoidanceVector.Normalize());
+            if (avoidedLastTurn)
+                timeSinceLastAvoid = DateTime.Now;
+
+            return !double.IsNaN(avoidanceVector.Normalize());
+        }
+
+        public void SetFleetZone(Vector3D pos)
+        {
+            defaultOrbitPoint = pos;
+        }
+
+        public bool HasCommandShip()
+        {
+            return commandShip != null;
+        }
+
+        public Ship getCommandShip()
+        {
+            return commandShip;
         }
     }
 }

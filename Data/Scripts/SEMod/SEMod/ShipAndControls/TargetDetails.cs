@@ -37,7 +37,14 @@ namespace SEMod
                 LastScannedTime = DateTime.Now;
             }
 
-            _keyPoints = _keyPoints.Where(x => x.IsFunctional).OrderBy(x=>(position-x.GetPosition()).Length()).ToList();
+            if (weapons.Count > 0 && weapons.Count(x => x.IsFunctional) > 0)
+            {
+                weapons = weapons.Where(x => x.IsFunctional).OrderBy(x => (position - x.GetPosition()).Length()).ToList();
+                var wep = _keyPoints.FirstOrDefault();
+                return wep;
+            }
+
+            _keyPoints = _keyPoints.Where(x => x.IsFunctional && !(x is MyThrust)).OrderBy(x=>(position-x.GetPosition()).Length()).ToList();
             var temp = _keyPoints.FirstOrDefault();
             return temp;
         }
@@ -45,6 +52,7 @@ namespace SEMod
         public void LocateTargetHardpoints()
         {
             IMyCubeGrid grid = Ship;
+            
             var centerPosition = Ship.GetPosition();
             _keyPoints.Clear();
             //get position, get lenier velocity in each direction
@@ -57,31 +65,30 @@ namespace SEMod
                 gridTerminal.GetBlocksOfType<Sandbox.ModAPI.IMyTerminalBlock>(terminalBlocks);
                 terminalBlocks = terminalBlocks.Where(x => x.IsFunctional).ToList();
 
-                List<IMyTerminalBlock> reactors = terminalBlocks.Where(x => x is IMyReactor).ToList();
-                List<IMyTerminalBlock> batteries = terminalBlocks.Where(x => x is IMyBatteryBlock).ToList();
-                List<IMyTerminalBlock> cockpits = terminalBlocks.Where(x => x is IMyCockpit).ToList();
-                List<IMyTerminalBlock> thrusters = terminalBlocks.Where(x => x is IMyThrust).ToList();
 
-                weapons = terminalBlocks.Where(x => x is Sandbox.ModAPI.IMyUserControllableGun).ToList();
-                ShipSize = terminalBlocks.Max(x=>(x.GetPosition()-Ship.GetPosition()).Length())*2;
+                if (terminalBlocks.Count > 0)
+                {
+                    weapons = terminalBlocks.Where(x => x is Sandbox.ModAPI.IMyUserControllableGun || x is IMyLargeTurretBase || x is IMySmallMissileLauncherReload).ToList();
+                    ShipSize = terminalBlocks.Max(x => (x.GetPosition() - Ship.GetPosition()).Length())*2;
 
-                //now that we have a list of reactors and guns lets primary one.
-                //try to find a working gun, if none are found then find a reactor to attack
-                _keyPoints.AddRange(reactors);
-                _keyPoints.AddRange(batteries);
-                _keyPoints.AddRange(cockpits);
-                _keyPoints.AddRange(thrusters);
-                _keyPoints.AddRange(weapons);
-                _keyPoints.AddRange(terminalBlocks);
+                    //now that we have a list of reactors and guns lets primary one.
+                    //try to find a working gun, if none are found then find a reactor to attack
+                    if(weapons.Count>0)
+                        _keyPoints.AddRange(weapons);
+
+                    _keyPoints.AddRange(terminalBlocks);
+                }
             }
 
         }
 
         public bool IsOperational()
         {
-            
+            var grid = Ship;
+            var vis = grid.IsVisible();
+            var notnull = grid != null;
             List<IMyTerminalBlock> reactorBlocks = terminalBlocks.Where(x => (x is IMyReactor || x is IMyBatteryBlock) && x.IsFunctional).ToList();
-            return reactorBlocks.Count > 0 && Ship.Physics.Mass > 2000;
+            return notnull && vis && reactorBlocks.Count > 0 && Ship.Physics!=null && Ship.Physics.Mass > 2000;
         }
     }
 }

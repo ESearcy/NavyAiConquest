@@ -5,12 +5,13 @@ using Sandbox.Game.Entities;
 using Sandbox.Game.Gui;
 using Sandbox.Game.Screens.Helpers;
 using Sandbox.ModAPI;
-using SpaceEngineers.Game.ModAPI;
+using Sandbox.ModAPI.Interfaces.Terminal;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.Library.Collections;
 using VRage.ModAPI;
 using VRageMath;
+using ITerminalAction = Sandbox.ModAPI.Interfaces.ITerminalAction;
 
 namespace SEMod
 {
@@ -32,27 +33,87 @@ namespace SEMod
 
         List<IMyCubeGrid> _nearbyFloatingObjects = new List<IMyCubeGrid>();
         List<IMyVoxelBase> _nearbyAsteroids = new List<IMyVoxelBase>();
+        private String fleetname;
 
         //same time no recalc
         private TimeSpan oneSecond;
 
+        private ITerminalAction gunon = null;
+        private ITerminalAction gunoff = null;
+        private ITerminalAction poweron = null;
+        private ITerminalAction poweroff = null;
+
         public void EnableWeapons()
         {
-            directionalWeapons = directionalWeapons.Where(x => x != null && x.IsFunctional).ToList();
-            foreach (var weapon in directionalWeapons)
+            try
             {
-                weapon.GetActionWithName("OnOff_On").Apply(weapon);
-                weapon.GetActionWithName("Shoot_On").Apply(weapon);
+                directionalWeapons = directionalWeapons.Where(x => x != null && x.IsFunctional).ToList();
+                //var launchers = directionalWeapons.Where(x => x.Name.Contains("launcher")).ToList();
+
+                foreach (var weapon in directionalWeapons)
+                {
+                    if (poweron == null || gunon == null)
+                    {
+                        poweron = weapon.GetActionWithName("OnOff_On"); //.Apply(weapon);
+                        gunon = weapon.GetActionWithName("Shoot_On"); //.Apply(weapon);
+                    }
+                    else
+                    {
+                        poweron.Apply(weapon);
+                        gunon.Apply(weapon);
+                        
+                    }
+                }
+                //if (poweron != null && gunon != null)
+                //    MyAPIGateway.Parallel.Start(() => FireLaunchers(launchers, poweron, gunon));
             }
+            catch (Exception e)
+            {
+                Logger.LogException(e);
+            }
+        }
+
+
+
+        private void FireLaunchers(List<IMyTerminalBlock> launchers, ITerminalAction onoff, ITerminalAction fire)
+        {
+            
+                DateTime start = DateTime.Now;
+                foreach (var launcher in launchers)
+                {
+                    while ((DateTime.Now - start).TotalMilliseconds < 100)
+                    {
+                    }
+                    start = DateTime.Now;
+                    
+                    {
+                        onoff.Apply(launcher);
+                        fire.Apply(launcher);
+                    }
+                }
         }
 
         public void DisableWeapons()
         {
-            directionalWeapons = directionalWeapons.Where(x => x != null && x.IsFunctional).ToList();
-            foreach (var weapon in directionalWeapons)
+            try { 
+                directionalWeapons = directionalWeapons.Where(x => x != null && x.IsFunctional).ToList();
+                foreach (var weapon in directionalWeapons)
+                {
+                    if (poweroff == null || gunoff == null)
+                    {
+                        poweroff = weapon.GetActionWithName("Shoot_Off"); //.Apply(weapon);
+                        gunoff = weapon.GetActionWithName("OnOff_Off"); //.Apply(weapon);
+                    }
+                    else
+                    {
+                        poweroff.Apply(weapon);
+                        gunoff.Apply(weapon);
+                    }
+                }
+            }
+            catch (Exception e)
             {
-                weapon.GetActionWithName("Shoot_Off").Apply(weapon);
-                weapon.GetActionWithName("OnOff_Off").Apply(weapon);
+                Logger.LogException(e);
             }
         }
 
@@ -67,8 +128,9 @@ namespace SEMod
             return block;
         }
 
-        public WeaponControls(IMyEntity Ship, long ownerID, IMyGridTerminalSystem grid)
+        public WeaponControls(IMyEntity Ship, long ownerID, IMyGridTerminalSystem grid, String fleetname)
         {
+            this.fleetname = fleetname;
             this.Ship = Ship;
             this._ownerId = ownerID;
             this._gridTerminalSystem = grid;
@@ -80,7 +142,7 @@ namespace SEMod
 
         public bool IsOperational()
         {
-            Util.Log(_logPath,"number of weapons: "+ GetWeaponsCount()+"turrets/other => "+turrets.Count+":"+directionalWeapons.Count);
+            Logger.Debug("number of weapons: " + GetWeaponsCount()+"turrets/other => "+turrets.Count+":"+directionalWeapons.Count);
             return GetWeaponsCount() > 0;
         }
 
@@ -105,6 +167,7 @@ namespace SEMod
         {
             if (!_nearbyFloatingObjects.Contains(entity) && Ship != entity)
             {
+                Logger.Debug("checking grid "+ entity.Name);
                 _nearbyFloatingObjects.Add(entity);
                 ScanTarget(entity);
             }
@@ -134,18 +197,22 @@ namespace SEMod
             bool isOnline = (reactorBlocks.Exists(x => (x.IsWorking)) || batteryBlocks.Exists(x => (x.IsWorking)));
 
             bool isownerId = grid.SmallOwners.Contains(_ownerId);
-            
+            bool isInFaction = grid.SmallOwners.Count(IsPartOfFaction) > 0;
+
+
             if (!isOnline) return;
             
-            var isEnemy = !GridFriendly(terminalBlocks) && !isownerId;
+            Logger.Debug("is Owner: "+isownerId);
+
+            var isEnemy = //!GridFriendly(terminalBlocks) && 
+                !isownerId && !isInFaction;
             //Util.NotifyHud("shared ownership " + isownerId+" isEnemy:"+isEnemy);
 
             List<IMyTerminalBlock> remoteControls = terminalBlocks.Where(x => x is IMyRemoteControl).ToList();
-            List<IMyTerminalBlock> weapons = terminalBlocks.Where(x => x is IMyUserControllableGun).ToList();
 
             bool isDrone = remoteControls.Exists(x => ((IMyRemoteControl)x).CustomName.Contains("Drone#"));
 
-            Util.Log(_logPath, "is Enemy: "+ isEnemy);
+            Logger.Debug("is Enemy: " + isEnemy);
             if (isEnemy)
                 targets.Add(grid, new TargetDetails(grid, isDrone));
         }
@@ -166,18 +233,18 @@ namespace SEMod
             {
                 switch (block.GetUserRelationToOwner(_ownerId))
                 {
-                    case MyRelationsBetweenPlayerAndBlock.FactionShare:
-                        fs++;
+                    
+                    case MyRelationsBetweenPlayerAndBlock.Owner:
                         //isFriendly = true;
                         break;
+                    case MyRelationsBetweenPlayerAndBlock.FactionShare:
+                        isFriendly = true;
+                        break;
                     case MyRelationsBetweenPlayerAndBlock.Neutral:
-                        n++;
                         break;
                     case MyRelationsBetweenPlayerAndBlock.NoOwnership:
-                        no++;
                         break;
                     case MyRelationsBetweenPlayerAndBlock.Enemies:
-                        e++;
                         break;
                 }
                 if (isFriendly)
@@ -192,9 +259,40 @@ namespace SEMod
 
         }
 
+        private bool IsPartOfFaction(long id)
+        {
+            Logger.Debug("looking for faction name: "+fleetname);
+            var faction = MyAPIGateway.Session.Factions.TryGetFactionByName(fleetname);
+            
+            try
+            {
+                if (faction != null)
+                {
+                    var myfaction = MyAPIGateway.Session.Factions.TryGetPlayerFaction(id);
+
+                    if (myfaction != null)
+                    {
+                        if (myfaction.FactionId == faction.FactionId)
+                        {
+                            Logger.Debug("Factions Match: " + myfaction.Name+":"+faction.Name);
+                            Logger.Debug("Same faction");
+                            return true;
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.LogException(e);
+            }
+
+            return false;
+        }
+
         public void ClearNearbyObjects()
         {
             _nearbyFloatingObjects.Clear();
+            _nearbyAsteroids.Clear();
         }
         TargetDetails targetDetails = null;
 
@@ -202,10 +300,11 @@ namespace SEMod
         //always gets the most current nearest target (causes switching alot in fleet fights)
         public TargetDetails GetEnemyTarget()
         {
+            Logger.Debug("Number of Targets: "+targets.Count);
             //Util.NotifyHud("targets count: "+targets.Count);
             targets = targets.Where(x=>x.Value.IsOperational()).OrderBy(x => (x.Key.GetPosition() - Ship.GetPosition()).Length()).ToDictionary(x => x.Key, x => x.Value);
 
-            if ((DateTime.Now - _targetAquiredTime).Seconds > 10)
+            if ((DateTime.Now - _targetAquiredTime).Seconds > 10 || (targetDetails!=null && !targetDetails.IsOperational()))
             {
                 _targetAquiredTime = DateTime.Now;
                 targetDetails = null;
@@ -225,9 +324,9 @@ namespace SEMod
             return targetDetails;
         }
 
-        public List<TargetDetails> GetObjectsInRange(int range)
+        public List<IMyCubeGrid> GetObjectsInRange(int range)
         {
-            List<TargetDetails> keyValuePairs = targets.Where(x => (x.Key.GetPosition() - Ship.GetPosition()).Length()<=range).Select(x=>x.Value).ToList();
+            List<IMyCubeGrid> keyValuePairs = _nearbyFloatingObjects.Where(x => (x.GetPosition() - Ship.GetPosition()).Length()<=range).ToList();
             //Util.NotifyHud(keyValuePairs.Count+" count");
             return keyValuePairs;
         }
@@ -253,7 +352,7 @@ namespace SEMod
         {
             long id = MyAPIGateway.Session.Player.IdentityId;
             count = 0;
-            Util.NotifyHud(targets.Count+"");
+            Logger.Debug(targets.Count+"");
             foreach (var obj in _nearbyFloatingObjects)
             {
                 count++;
@@ -265,7 +364,7 @@ namespace SEMod
         {
             long id = MyAPIGateway.Session.Player.IdentityId;
             count = 0;
-            Util.NotifyHud(targets.Count + "");
+            Logger.Debug(targets.Count + "");
             foreach (var obj in targets)
             {
                 count++;

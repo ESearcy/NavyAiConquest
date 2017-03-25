@@ -181,7 +181,7 @@
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
               <Owner>144115188075855877</Owner>
               <ShareMode>Faction</ShareMode>
-              <CustomName>#PirateDrone#</CustomName>
+              <CustomName>#LargeAIDrone#</CustomName>
               <ShowOnHUD>false</ShowOnHUD>
               <ShowInTerminal>true</ShowInTerminal>
               <ShowInToolbarConfig>true</ShowInToolbarConfig>
@@ -192,7 +192,7 @@
                 <Slots />
               </Toolbar>
               <SelectedGunId xsi:nil="true" />
-              <IsMainCockpit>false</IsMainCockpit>
+              <IsMLargeAInCockpit>false</IsMLargeAInCockpit>
               <HorizonIndicatorEnabled>true</HorizonIndicatorEnabled>
               <PreviousControlledEntityId xsi:nil="true" />
               <AutoPilotEnabled>false</AutoPilotEnabled>
@@ -214,14 +214,14 @@
               <BlockOrientation Forward="Down" Up="Forward" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
             </MyObjectBuilder_CubeBlock>
-            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContainer">
-              <SubtypeName>LargeBlockSmallContainer</SubtypeName>
+            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContLargeAIner">
+              <SubtypeName>LargeBlockSmallContLargeAIner</SubtypeName>
               <EntityId>151053081839557611</EntityId>
               <Min x="3" y="-2" z="5" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
               <Owner>144115188075855877</Owner>
               <ShareMode>Faction</ShareMode>
-              <CustomName>Small Cargo Container 8</CustomName>
+              <CustomName>Small Cargo ContLargeAIner 8</CustomName>
               <ShowOnHUD>false</ShowOnHUD>
               <ShowInTerminal>true</ShowInTerminal>
               <ShowInToolbarConfig>true</ShowInToolbarConfig>
@@ -234,14 +234,14 @@
                 <InventoryFlags>CanReceive CanSend</InventoryFlags>
               </Inventory>
             </MyObjectBuilder_CubeBlock>
-            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContainer">
-              <SubtypeName>LargeBlockSmallContainer</SubtypeName>
+            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContLargeAIner">
+              <SubtypeName>LargeBlockSmallContLargeAIner</SubtypeName>
               <EntityId>167425955112746357</EntityId>
               <Min x="2" y="-2" z="8" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
               <Owner>144115188075855877</Owner>
               <ShareMode>Faction</ShareMode>
-              <CustomName>Small Cargo Container 7</CustomName>
+              <CustomName>Small Cargo ContLargeAIner 7</CustomName>
               <ShowOnHUD>false</ShowOnHUD>
               <ShowInTerminal>true</ShowInTerminal>
               <ShowInToolbarConfig>true</ShowInToolbarConfig>
@@ -279,9 +279,9 @@
               </Inventory>
               <UseConveyorSystem>true</UseConveyorSystem>
               <GunBase>
-                <RemainingAmmo>0</RemainingAmmo>
+                <RemLargeAIningAmmo>0</RemLargeAIningAmmo>
                 <CurrentAmmoMagazineName>Missile200mm</CurrentAmmoMagazineName>
-                <RemainingAmmosList />
+                <RemLargeAIningAmmosList />
                 <LastShootTime>0</LastShootTime>
               </GunBase>
             </MyObjectBuilder_CubeBlock>
@@ -349,14 +349,14 @@
               <BlockOrientation Forward="Down" Up="Left" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
             </MyObjectBuilder_CubeBlock>
-            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContainer">
-              <SubtypeName>LargeBlockSmallContainer</SubtypeName>
+            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContLargeAIner">
+              <SubtypeName>LargeBlockSmallContLargeAIner</SubtypeName>
               <EntityId>152777299847017127</EntityId>
               <Min x="2" y="-2" z="6" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
               <Owner>144115188075855877</Owner>
               <ShareMode>Faction</ShareMode>
-              <CustomName>Small Cargo Container 9</CustomName>
+              <CustomName>Small Cargo ContLargeAIner 9</CustomName>
               <ShowOnHUD>false</ShowOnHUD>
               <ShowInTerminal>true</ShowInTerminal>
               <ShowInToolbarConfig>true</ShowInToolbarConfig>
@@ -468,14 +468,14 @@
                 <InventoryFlags>CanReceive</InventoryFlags>
               </Inventory>
             </MyObjectBuilder_CubeBlock>
-            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContainer">
-              <SubtypeName>LargeBlockSmallContainer</SubtypeName>
+            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContLargeAIner">
+              <SubtypeName>LargeBlockSmallContLargeAIner</SubtypeName>
               <EntityId>181681515730840115</EntityId>
               <Min x="4" y="-2" z="8" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
               <Owner>144115188075855877</Owner>
               <ShareMode>Faction</ShareMode>
-              <CustomName>Small Cargo Container 8</CustomName>
+              <CustomName>Small Cargo ContLargeAIner 8</CustomName>
               <ShowOnHUD>false</ShowOnHUD>
               <ShowInTerminal>true</ShowInTerminal>
               <ShowInToolbarConfig>true</ShowInToolbarConfig>
@@ -544,9 +544,9 @@
               </Inventory>
               <UseConveyorSystem>true</UseConveyorSystem>
               <GunBase>
-                <RemainingAmmo>0</RemainingAmmo>
+                <RemLargeAIningAmmo>0</RemLargeAIningAmmo>
                 <CurrentAmmoMagazineName>Missile200mm</CurrentAmmoMagazineName>
-                <RemainingAmmosList />
+                <RemLargeAIningAmmosList />
                 <LastShootTime>0</LastShootTime>
               </GunBase>
             </MyObjectBuilder_CubeBlock>
@@ -779,14 +779,14 @@
               <BlockOrientation Forward="Forward" Up="Right" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
             </MyObjectBuilder_CubeBlock>
-            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContainer">
-              <SubtypeName>LargeBlockSmallContainer</SubtypeName>
+            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContLargeAIner">
+              <SubtypeName>LargeBlockSmallContLargeAIner</SubtypeName>
               <EntityId>199897586607504606</EntityId>
               <Min x="3" y="-2" z="10" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
               <Owner>144115188075855877</Owner>
               <ShareMode>Faction</ShareMode>
-              <CustomName>Small Cargo Container 15</CustomName>
+              <CustomName>Small Cargo ContLargeAIner 15</CustomName>
               <ShowOnHUD>false</ShowOnHUD>
               <ShowInTerminal>true</ShowInTerminal>
               <ShowInToolbarConfig>true</ShowInToolbarConfig>
@@ -948,7 +948,7 @@
               <InstantBuildingEnabled>false</InstantBuildingEnabled>
               <MaxNumberOfProjections>5</MaxNumberOfProjections>
               <MaxNumberOfBlocks>200</MaxNumberOfBlocks>
-              <ProjectionsRemaining>0</ProjectionsRemaining>
+              <ProjectionsRemLargeAIning>0</ProjectionsRemLargeAIning>
               <GetOwnershipFromProjector>false</GetOwnershipFromProjector>
             </MyObjectBuilder_CubeBlock>
             <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CubeBlock">
@@ -963,14 +963,14 @@
               <BlockOrientation Forward="Down" Up="Forward" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
             </MyObjectBuilder_CubeBlock>
-            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContainer">
-              <SubtypeName>LargeBlockSmallContainer</SubtypeName>
+            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContLargeAIner">
+              <SubtypeName>LargeBlockSmallContLargeAIner</SubtypeName>
               <EntityId>148069052830090807</EntityId>
               <Min x="2" y="-2" z="7" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
               <Owner>144115188075855877</Owner>
               <ShareMode>Faction</ShareMode>
-              <CustomName>Small Cargo Container 11</CustomName>
+              <CustomName>Small Cargo ContLargeAIner 11</CustomName>
               <ShowOnHUD>false</ShowOnHUD>
               <ShowInTerminal>true</ShowInTerminal>
               <ShowInToolbarConfig>true</ShowInToolbarConfig>
@@ -983,14 +983,14 @@
                 <InventoryFlags>CanReceive CanSend</InventoryFlags>
               </Inventory>
             </MyObjectBuilder_CubeBlock>
-            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContainer">
-              <SubtypeName>LargeBlockSmallContainer</SubtypeName>
+            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContLargeAIner">
+              <SubtypeName>LargeBlockSmallContLargeAIner</SubtypeName>
               <EntityId>190298263000563948</EntityId>
               <Min x="5" y="-2" z="8" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
               <Owner>144115188075855877</Owner>
               <ShareMode>Faction</ShareMode>
-              <CustomName>Small Cargo Container 2</CustomName>
+              <CustomName>Small Cargo ContLargeAIner 2</CustomName>
               <ShowOnHUD>false</ShowOnHUD>
               <ShowInTerminal>true</ShowInTerminal>
               <ShowInToolbarConfig>true</ShowInToolbarConfig>
@@ -1003,14 +1003,14 @@
                 <InventoryFlags>CanReceive CanSend</InventoryFlags>
               </Inventory>
             </MyObjectBuilder_CubeBlock>
-            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContainer">
-              <SubtypeName>LargeBlockSmallContainer</SubtypeName>
+            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContLargeAIner">
+              <SubtypeName>LargeBlockSmallContLargeAIner</SubtypeName>
               <EntityId>147634328585874695</EntityId>
               <Min x="1" y="-2" z="8" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
               <Owner>144115188075855877</Owner>
               <ShareMode>Faction</ShareMode>
-              <CustomName>Small Cargo Container 3</CustomName>
+              <CustomName>Small Cargo ContLargeAIner 3</CustomName>
               <ShowOnHUD>false</ShowOnHUD>
               <ShowInTerminal>true</ShowInTerminal>
               <ShowInToolbarConfig>true</ShowInToolbarConfig>
@@ -1023,14 +1023,14 @@
                 <InventoryFlags>CanReceive CanSend</InventoryFlags>
               </Inventory>
             </MyObjectBuilder_CubeBlock>
-            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContainer">
-              <SubtypeName>LargeBlockSmallContainer</SubtypeName>
+            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContLargeAIner">
+              <SubtypeName>LargeBlockSmallContLargeAIner</SubtypeName>
               <EntityId>158723910443069356</EntityId>
               <Min x="3" y="-1" z="5" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
               <Owner>144115188075855877</Owner>
               <ShareMode>Faction</ShareMode>
-              <CustomName>Small Cargo Container 7</CustomName>
+              <CustomName>Small Cargo ContLargeAIner 7</CustomName>
               <ShowOnHUD>false</ShowOnHUD>
               <ShowInTerminal>true</ShowInTerminal>
               <ShowInToolbarConfig>true</ShowInToolbarConfig>
@@ -1048,14 +1048,14 @@
               <Min x="1" y="-1" z="7" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
             </MyObjectBuilder_CubeBlock>
-            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContainer">
-              <SubtypeName>LargeBlockSmallContainer</SubtypeName>
+            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContLargeAIner">
+              <SubtypeName>LargeBlockSmallContLargeAIner</SubtypeName>
               <EntityId>185591739136593045</EntityId>
               <Min x="3" y="-2" z="9" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
               <Owner>144115188075855877</Owner>
               <ShareMode>Faction</ShareMode>
-              <CustomName>Small Cargo Container 13</CustomName>
+              <CustomName>Small Cargo ContLargeAIner 13</CustomName>
               <ShowOnHUD>false</ShowOnHUD>
               <ShowInTerminal>true</ShowInTerminal>
               <ShowInToolbarConfig>true</ShowInToolbarConfig>
@@ -1100,14 +1100,14 @@
               <BlockOrientation Forward="Down" Up="Right" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
             </MyObjectBuilder_CubeBlock>
-            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContainer">
-              <SubtypeName>LargeBlockSmallContainer</SubtypeName>
+            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContLargeAIner">
+              <SubtypeName>LargeBlockSmallContLargeAIner</SubtypeName>
               <EntityId>197648556998914474</EntityId>
               <Min x="4" y="-2" z="6" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
               <Owner>144115188075855877</Owner>
               <ShareMode>Faction</ShareMode>
-              <CustomName>Small Cargo Container 10</CustomName>
+              <CustomName>Small Cargo ContLargeAIner 10</CustomName>
               <ShowOnHUD>false</ShowOnHUD>
               <ShowInTerminal>true</ShowInTerminal>
               <ShowInToolbarConfig>true</ShowInToolbarConfig>
@@ -1120,14 +1120,14 @@
                 <InventoryFlags>CanReceive CanSend</InventoryFlags>
               </Inventory>
             </MyObjectBuilder_CubeBlock>
-            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContainer">
-              <SubtypeName>LargeBlockSmallContainer</SubtypeName>
+            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContLargeAIner">
+              <SubtypeName>LargeBlockSmallContLargeAIner</SubtypeName>
               <EntityId>178005192613149614</EntityId>
               <Min x="4" y="-2" z="7" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
               <Owner>144115188075855877</Owner>
               <ShareMode>Faction</ShareMode>
-              <CustomName>Small Cargo Container 12</CustomName>
+              <CustomName>Small Cargo ContLargeAIner 12</CustomName>
               <ShowOnHUD>false</ShowOnHUD>
               <ShowInTerminal>true</ShowInTerminal>
               <ShowInToolbarConfig>true</ShowInToolbarConfig>
@@ -1171,16 +1171,16 @@
                 <Size x="0.4" y="0.4" z="0.4" />
                 <InventoryFlags>CanReceive</InventoryFlags>
               </Inventory>
-              <RemainingAmmo>0</RemainingAmmo>
+              <RemLargeAIningAmmo>0</RemLargeAIningAmmo>
               <Target>215063781164423250</Target>
               <IsPotentialTarget>false</IsPotentialTarget>
               <PreviousControlledEntityId xsi:nil="true" />
               <Rotation>0</Rotation>
               <Elevation>0</Elevation>
               <GunBase>
-                <RemainingAmmo>0</RemainingAmmo>
+                <RemLargeAIningAmmo>0</RemLargeAIningAmmo>
                 <CurrentAmmoMagazineName>Missile200mm</CurrentAmmoMagazineName>
-                <RemainingAmmosList />
+                <RemLargeAIningAmmosList />
                 <LastShootTime>635764645824200674</LastShootTime>
               </GunBase>
               <EnableIdleRotation>true</EnableIdleRotation>
@@ -1210,16 +1210,16 @@
                 <Size x="0.4" y="0.4" z="0.4" />
                 <InventoryFlags>CanReceive</InventoryFlags>
               </Inventory>
-              <RemainingAmmo>0</RemainingAmmo>
+              <RemLargeAIningAmmo>0</RemLargeAIningAmmo>
               <Target>215063781164423250</Target>
               <IsPotentialTarget>false</IsPotentialTarget>
               <PreviousControlledEntityId xsi:nil="true" />
               <Rotation>0</Rotation>
               <Elevation>0</Elevation>
               <GunBase>
-                <RemainingAmmo>0</RemainingAmmo>
+                <RemLargeAIningAmmo>0</RemLargeAIningAmmo>
                 <CurrentAmmoMagazineName>Missile200mm</CurrentAmmoMagazineName>
-                <RemainingAmmosList />
+                <RemLargeAIningAmmosList />
                 <LastShootTime>635764645824200674</LastShootTime>
               </GunBase>
               <EnableIdleRotation>true</EnableIdleRotation>
@@ -1288,14 +1288,14 @@
               <BlockOrientation Forward="Backward" Up="Down" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
             </MyObjectBuilder_CubeBlock>
-            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContainer">
-              <SubtypeName>LargeBlockSmallContainer</SubtypeName>
+            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContLargeAIner">
+              <SubtypeName>LargeBlockSmallContLargeAIner</SubtypeName>
               <EntityId>212652317438821715</EntityId>
               <Min x="3" y="-3" z="5" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
               <Owner>144115188075855877</Owner>
               <ShareMode>Faction</ShareMode>
-              <CustomName>Small Cargo Container 5</CustomName>
+              <CustomName>Small Cargo ContLargeAIner 5</CustomName>
               <ShowOnHUD>false</ShowOnHUD>
               <ShowInTerminal>true</ShowInTerminal>
               <ShowInToolbarConfig>true</ShowInToolbarConfig>
@@ -1382,16 +1382,16 @@
                 <Size x="0.4" y="0.4" z="0.4" />
                 <InventoryFlags>CanReceive</InventoryFlags>
               </Inventory>
-              <RemainingAmmo>0</RemainingAmmo>
+              <RemLargeAIningAmmo>0</RemLargeAIningAmmo>
               <Target>215063781164423250</Target>
               <IsPotentialTarget>true</IsPotentialTarget>
               <PreviousControlledEntityId xsi:nil="true" />
               <Rotation>0</Rotation>
               <Elevation>0</Elevation>
               <GunBase>
-                <RemainingAmmo>0</RemainingAmmo>
+                <RemLargeAIningAmmo>0</RemLargeAIningAmmo>
                 <CurrentAmmoMagazineName>NATO_25x184mm</CurrentAmmoMagazineName>
-                <RemainingAmmosList />
+                <RemLargeAIningAmmosList />
                 <LastShootTime>0</LastShootTime>
               </GunBase>
               <EnableIdleRotation>true</EnableIdleRotation>
@@ -1478,9 +1478,9 @@
               </Inventory>
               <UseConveyorSystem>true</UseConveyorSystem>
               <GunBase>
-                <RemainingAmmo>0</RemainingAmmo>
+                <RemLargeAIningAmmo>0</RemLargeAIningAmmo>
                 <CurrentAmmoMagazineName>Missile200mm</CurrentAmmoMagazineName>
-                <RemainingAmmosList />
+                <RemLargeAIningAmmosList />
                 <LastShootTime>0</LastShootTime>
               </GunBase>
             </MyObjectBuilder_CubeBlock>
@@ -1510,9 +1510,9 @@
               </Inventory>
               <UseConveyorSystem>true</UseConveyorSystem>
               <GunBase>
-                <RemainingAmmo>0</RemainingAmmo>
+                <RemLargeAIningAmmo>0</RemLargeAIningAmmo>
                 <CurrentAmmoMagazineName>Missile200mm</CurrentAmmoMagazineName>
-                <RemainingAmmosList />
+                <RemLargeAIningAmmosList />
                 <LastShootTime>0</LastShootTime>
               </GunBase>
             </MyObjectBuilder_CubeBlock>
@@ -1552,16 +1552,16 @@
                 <Size x="0.4" y="0.4" z="0.4" />
                 <InventoryFlags>CanReceive</InventoryFlags>
               </Inventory>
-              <RemainingAmmo>0</RemainingAmmo>
+              <RemLargeAIningAmmo>0</RemLargeAIningAmmo>
               <Target>215063781164423250</Target>
               <IsPotentialTarget>false</IsPotentialTarget>
               <PreviousControlledEntityId xsi:nil="true" />
               <Rotation>0</Rotation>
               <Elevation>0</Elevation>
               <GunBase>
-                <RemainingAmmo>0</RemainingAmmo>
+                <RemLargeAIningAmmo>0</RemLargeAIningAmmo>
                 <CurrentAmmoMagazineName>NATO_25x184mm</CurrentAmmoMagazineName>
-                <RemainingAmmosList />
+                <RemLargeAIningAmmosList />
                 <LastShootTime>635764645840605995</LastShootTime>
               </GunBase>
               <EnableIdleRotation>true</EnableIdleRotation>
@@ -2002,14 +2002,14 @@
               <BlockOrientation Forward="Up" Up="Left" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
             </MyObjectBuilder_CubeBlock>
-            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContainer">
-              <SubtypeName>LargeBlockSmallContainer</SubtypeName>
+            <MyObjectBuilder_CubeBlock xsi:type="MyObjectBuilder_CargoContLargeAIner">
+              <SubtypeName>LargeBlockSmallContLargeAIner</SubtypeName>
               <EntityId>145617656090158989</EntityId>
               <Min x="3" y="-1" z="10" />
               <ColorMaskHSV x="0" y="-0.81" z="-0.3" />
               <Owner>144115188075855877</Owner>
               <ShareMode>Faction</ShareMode>
-              <CustomName>Small Cargo Container 14</CustomName>
+              <CustomName>Small Cargo ContLargeAIner 14</CustomName>
               <ShowOnHUD>false</ShowOnHUD>
               <ShowInTerminal>true</ShowInTerminal>
               <ShowInToolbarConfig>true</ShowInToolbarConfig>
